@@ -16,12 +16,25 @@
 	<h1>SpecIF to ePub</h1>
 </div>
 <script type="text/javascript">
+	function zipCreator( ePub ) {
+		let zip = new JSZip(),
+			i=null;
+		for( i=0,I=ePub.OEBPS.length; i<I; i++ ) {
+			zip.file( "OEBPS/ch"+i+".xhtml", ePub.OEBPS[i] )
+		};
+		zip.generateAsync({
+				type: "blob"
+			})
+			.then(function(blob) {
+				saveAs(blob, ePub.title + ".epub")
+			})
+	}
 (function() {
 	// the DOM will be available here
-//	alert('hello world')
 	let model = specifData();
 	let ePub = toEpub(model);
-	console.debug(ePub)
+	console.debug(ePub);
+	zipCreator(ePub)
 })()
 </script>
 </body>

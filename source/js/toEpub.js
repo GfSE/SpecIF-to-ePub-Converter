@@ -12,12 +12,12 @@ function toEpub( specifData, opts ) {
 	var ePub = {
 		title: specifData.title,
 		cover: undefined,
-		content: '',
+		OEBPS: [],
 		css: undefined,
 		mimetype: 'application/epub+zip'
 	};
 	
-	ePub.content = '<h1>Hello World</h1><p>Lorem ipsum ...</p>';
+	ePub.OEBPS.push('<h1>Hello World</h1><p>Lorem ipsum ...</p>');
 		
 	return ePub
 }

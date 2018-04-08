@@ -9,6 +9,7 @@
 	<script type="text/javascript" src="./lib/filesaver/src/fileSaver.js"></script>
 	<script type="text/javascript" src="./lib/jszip/dist/jszip.js"></script>
 	<script type="text/javascript" src="./js/specifData.js"></script>
+	<script type="text/javascript" src="./js/toXhtml.js"></script>
 	<script type="text/javascript" src="./js/toEpub.js"></script>
 </head>
 <body>
@@ -16,25 +17,9 @@
 	<h1>SpecIF to ePub</h1>
 </div>
 <script type="text/javascript">
-	function zipCreator( ePub ) {
-		let zip = new JSZip(),
-			i=null;
-		for( i=0,I=ePub.OEBPS.length; i<I; i++ ) {
-			zip.file( "OEBPS/ch"+i+".xhtml", ePub.OEBPS[i] )
-		};
-		zip.generateAsync({
-				type: "blob"
-			})
-			.then(function(blob) {
-				saveAs(blob, ePub.title + ".epub")
-			})
-	}
 (function() {
 	// the DOM will be available here
-	let model = specifData();
-	let ePub = toEpub(model);
-	console.debug(ePub);
-	zipCreator(ePub)
+	toEpub( specifData() );
 })()
 </script>
 </body>

@@ -12,14 +12,21 @@ function toEpub( specifData, opts ) {
 	let i=null, I=null,
 		ePub = toXhtml( specifData );
 	
-	// A tutorial: http://www.jedisaber.com/eBooks/formatsource.shtml
+	ePub.images = [];
+	
+	// Tutorials: 
+	// - https://www.ibm.com/developerworks/xml/tutorials/x-epubtut/index.html
+	// - http://www.jedisaber.com/eBooks/formatsource.shtml
 	ePub.fileName = specifData.title;
 	ePub.mimetype = 'application/epub+zip';
+
 //	ePub.cover = undefined;
 	ePub.styles = 	
-				'body { margin-top:2%; margin-right:2%; margin-bottom:2%; margin-left:2%; } \n'
-		+		'div, p { text-align: justify; font-family:Arial,sans-serif; font-size:100%; font-weight: normal; } \n'
+				'body { margin-top:2%; margin-right:2%; margin-bottom:2%; margin-left:2%; font-family:Arial,sans-serif; font-size:100%; font-weight: normal; } \n'
+		+		'div, p { text-align: justify; } \n'
 		+		'div.title { text-align: center; font-size:210%; } \n'
+		+		'table.propertyTable { width:100%; border: 0px; border-collapse:collapse; margin: 0 } \n'
+		+		'td.propertyTitle { width:25%; border: 0px; vertical-align:top; font-size: 90%; font-style: italic; } \n'
 //		+		'h5 { font-family:Arial,sans-serif; font-size:110%; font-weight: normal; } \n'
 		+		'h4 { font-family:Arial,sans-serif; font-size:120%; font-weight: normal; } \n'
 		+		'h3 { font-family:Arial,sans-serif; font-size:140%; font-weight: normal; } \n'
@@ -63,6 +70,7 @@ function toEpub( specifData, opts ) {
 	};
 	ePub.content += '</spine>'
 		+		'</package>';
+
 	ePub.toc = 	
 				'<?xml version="1.0" encoding="utf-8"?>'
 		+		'<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">'
@@ -75,6 +83,7 @@ function toEpub( specifData, opts ) {
 		+		'<docTitle>'
 		+			'<text>'+specifData.title+'</text>'
 		+		'</docTitle>'
+	// http://epubsecrets.com/nesting-your-toc-in-the-ncx-file-and-the-nookkindle-workaround.php
 		+		'<navMap>'
 /*		+			'<navPoint id="tocTitlepage" playOrder="1">'
 		+				'<navLabel><text>Title Page</text></navLabel>'
@@ -91,30 +100,37 @@ function toEpub( specifData, opts ) {
 		+		'</ncx>';
 		
 	console.debug('ePub',ePub);
-	createEpub(ePub);
+	storeEpub(ePub);
 	return
 	
-	function createEpub( ePub ) {
+	function storeEpub( ePub ) {
 		let zip = new JSZip(),
-			i=null, I=null;
+			i=null, I=null,
+			img=null;
 		zip.file( "mimetype", ePub.mimetype );
 		zip.file( "META-INF/container.xml", ePub.container );
 		zip.file( "OEBPS/content.opf", ePub.content );
+
+		// Add the table of contents:
+		zip.file( "OEBPS/toc.ncx", ePub.toc );
+		
+		// Add the styles:
+		if( ePub.styles ) 
+			zip.file( "OEBPS/Styles/styles.css", ePub.styles );
+		
 //		zip.file( "OEBPS/Text/title.xhtml", ePub.title );
+		// Add the chapters:
 		for( i=0,I=ePub.chapters.length; i<I; i++ ) {
 			zip.file( "OEBPS/Text/ch"+i+".xhtml", ePub.chapters[i] )
 		};
-/*		for( i=0,I=ePub.images.length; i<I; i++ ) {
-			zip.file( "OEBPS/Images/img"+i+".svg", ePub.images[i] )
-		};
-*/		zip.file( "OEBPS/toc.ncx", ePub.toc );
-		if( ePub.styles ) 
-			zip.file( "OEBPS/Styles/styles.css", ePub.styles );
+/*		// Add the images:
+*/
 		zip.generateAsync({
 				type: "blob"
 			})
 			.then(function(blob) {
 				saveAs(blob, ePub.fileName + ".epub")
-			})
+			});
+		return
 	}
 }

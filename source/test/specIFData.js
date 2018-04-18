@@ -1,6 +1,6 @@
 /**
  * Created by Marcus Bätz on 12.04.2017.
- * Data-set updated to SpecIF v0.11.2.
+ * Data-set updated to SpecIF v0.10.4.
  */
 function specifData() {
 
@@ -539,7 +539,7 @@ function specifData() {
             "icon": "↯",
             "propertyClasses": [{
                 "id": "AD-Req-ID",
-                "title": "ReqIF.ForeignID",
+                "title": "dcterms:identifier",
                 "dataType": "DT-ShortString",
                 "revision": 1,
                 "changedAt": "2016-05-26T08:59:00+02:00"
@@ -625,7 +625,7 @@ function specifData() {
             "description": "An 'Issue' is a question to answer or decision to take which is worth tracking.",
             "propertyClasses": [{
                 "id": "AD-Iss-ObjectID",
-                "title": "ReqIF.ForeignID",
+                "title": "dcterms:identifier",
                 "dataType": "DT-ShortString",
                 "revision": 1,
                 "changedAt": "2016-05-26T08:59:00+02:00"
@@ -1195,7 +1195,7 @@ function specifData() {
             "id": "Req-d1c895230000c3a80150f8afd049f738",
             "title": "Dim an electric load",
             "properties": [{
-                "title": "ReqIF.ForeignID",
+                "title": "dcterms:identifier",
                 "class": "AD-Req-ID",
                 "value": "REQ_014"
             }, {
@@ -1251,7 +1251,7 @@ function specifData() {
             "id": "Req-d1d42a6a0000c3a8015091ec8d149b93",
             "title": "Switch an electric load",
             "properties": [{
-                "title": "ReqIF.ForeignID",
+                "title": "dcterms:identifier",
                 "class": "AD-Req-ID",
                 "value": "REQ_016"
             }, {
@@ -1306,7 +1306,7 @@ function specifData() {
             "id": "Req-d1cd7f370000c3a8015095e6ee21aab7",
             "title": "Set dimming parameters",
             "properties": [{
-                "title": "ReqIF.ForeignID",
+                "title": "dcterms:identifier",
                 "class": "AD-Req-ID",
                 "value": "REQ_015"
             }, {
@@ -1362,7 +1362,7 @@ function specifData() {
             "id": "Req-5ba3512b0000bca801371cc0617eb4c1",
             "title": "Minimum button size",
             "properties": [{
-                "title": "ReqIF.ForeignID",
+                "title": "dcterms:identifier",
                 "class": "AD-Req-ID",
                 "value": "REQ_009"
             }, {
@@ -1417,7 +1417,7 @@ function specifData() {
             "id": "Req-5b8fbb300000bca80137c73e3ce4c737",
             "title": "Electric load is 120 W",
             "properties": [{
-                "title": "ReqIF.ForeignID",
+                "title": "dcterms:identifier",
                 "class": "AD-Req-ID",
                 "value": "REQ_001"
             }, {
@@ -1491,7 +1491,7 @@ function specifData() {
             "id": "Req-5b944fc70000bca8013763f44fdc0e03",
             "title": "Instant use",
             "properties": [{
-                "title": "ReqIF.ForeignID",
+                "title": "dcterms:identifier",
                 "class": "AD-Req-ID",
                 "value": "REQ_003"
             }, {
@@ -1547,7 +1547,7 @@ function specifData() {
             "id": "Req-5ba140d60000bca801372b09f9888eca",
             "title": "Instantaneous reaction",
             "properties": [{
-                "title": "ReqIF.ForeignID",
+                "title": "dcterms:identifier",
                 "class": "AD-Req-ID",
                 "value": "REQ_008"
             }, {
@@ -1603,7 +1603,7 @@ function specifData() {
             "id": "Req-ee452cf20000c3a8014035290669304d",
             "title": "Consistent system behavior",
             "properties": [{
-                "title": "ReqIF.ForeignID",
+                "title": "dcterms:identifier",
                 "class": "AD-Req-ID",
                 "value": "REQ_011"
             }, {
@@ -1658,7 +1658,7 @@ function specifData() {
             "id": "Req-ee43fc4c0000c3a8014063d42c77767f",
             "title": "No dead-locks",
             "properties": [{
-                "title": "ReqIF.ForeignID",
+                "title": "dcterms:identifier",
                 "class": "AD-Req-ID",
                 "value": "REQ_010"
             }, {
@@ -1713,7 +1713,7 @@ function specifData() {
             "id": "Req-5b9124bc0000bca80137fa2ce86f5eca",
             "title": "Overload protection",
             "properties": [{
-                "title": "ReqIF.ForeignID",
+                "title": "dcterms:identifier",
                 "class": "AD-Req-ID",
                 "value": "REQ_002"
             }, {
@@ -1768,7 +1768,7 @@ function specifData() {
             "id": "Req-5b9e68530000bca801371362c49d2d08",
             "title": "Auto shut-off",
             "properties": [{
-                "title": "ReqIF.ForeignID",
+                "title": "dcterms:identifier",
                 "class": "AD-Req-ID",
                 "value": "REQ_007"
             }, {
@@ -1842,7 +1842,7 @@ function specifData() {
             "id": "Req-eea1cd500000c3a80140fe00109eb7f4",
             "title": "Compliance with industry standards",
             "properties": [{
-                "title": "ReqIF.ForeignID",
+                "title": "dcterms:identifier",
                 "class": "AD-Req-ID",
                 "value": "REQ_012"
             }, {
@@ -1897,7 +1897,7 @@ function specifData() {
             "id": "Req-5b95fae40000bca801372becc933682d",
             "title": "Industry-standard mounting",
             "properties": [{
-                "title": "ReqIF.ForeignID",
+                "title": "dcterms:identifier",
                 "class": "AD-Req-ID",
                 "value": "REQ_004"
             }, {
@@ -1952,7 +1952,7 @@ function specifData() {
             "id": "Req-5b9ab8a50000bca801377ad0be3bbc89",
             "title": "Fire protection",
             "properties": [{
-                "title": "ReqIF.ForeignID",
+                "title": "dcterms:identifier",
                 "class": "AD-Req-ID",
                 "value": "REQ_005"
             }, {
@@ -2007,7 +2007,7 @@ function specifData() {
             "id": "Req-728c69c80018b1a8014b974542c36edc",
             "title": "Galvanic Isolation",
             "properties": [{
-                "title": "ReqIF.ForeignID",
+                "title": "dcterms:identifier",
                 "class": "AD-Req-ID",
                 "value": "REQ_013"
             }, {
@@ -2062,7 +2062,7 @@ function specifData() {
             "id": "Req-5b9c950e0000bca801374f16615247b9",
             "title": "Complete state-machine",
             "properties": [{
-                "title": "ReqIF.ForeignID",
+                "title": "dcterms:identifier",
                 "class": "AD-Req-ID",
                 "value": "REQ_006"
             }, {
@@ -2155,7 +2155,7 @@ function specifData() {
             "id": "Iss-ee2abb630000c3a8013987a750219659",
             "title": "An open issue with respect to mechanics",
             "properties": [{
-                "title": "ReqIF.ForeignID",
+                "title": "dcterms:identifier",
                 "class": "AD-Iss-ObjectID",
                 "value": "OPM_001"
             }, {
@@ -2213,7 +2213,7 @@ function specifData() {
             "id": "Iss-eee2d4e00000c3a801394148dcc58a52",
             "title": "An open issue concerning software",
             "properties": [{
-                "title": "ReqIF.ForeignID",
+                "title": "dcterms:identifier",
                 "class": "AD-Iss-ObjectID",
                 "value": "OPS_001"
             }, {

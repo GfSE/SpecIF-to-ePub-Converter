@@ -18,8 +18,10 @@
 </div>
 <script type="text/javascript">
 (function() {
-	// the DOM will be available here
-	toEpub( specifData() );
+	// the DOM is available now.
+	var specif = specifData(),
+		options = { filePath: 'https://se.reqif.net/reqif/v0.92/projects/'+specif.id+'/rev/0/files/' };
+	toEpub( specif, options );
 })()
 </script>
 </body>

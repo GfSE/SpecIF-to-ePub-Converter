@@ -369,6 +369,7 @@ function specifData() {
             "id": "OT-Fld",
             "title": "SpecIF:Heading",
             "description": "Folders with title and text for chapters or descriptive paragraphs.",
+			"isHeading": true,
             "propertyClasses": [{
                 "id": "AD-Fld-Name",
                 "title": "SpecIF:Heading",

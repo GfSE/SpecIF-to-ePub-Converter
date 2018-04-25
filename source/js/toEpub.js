@@ -19,28 +19,29 @@ function toEpub( specifData, opts ) {
 //	ePub.cover = undefined;
 	ePub.styles = 	
 				'body { margin-top:2%; margin-right:2%; margin-bottom:2%; margin-left:2%; font-family:Arial,sans-serif; font-size:100%; font-weight: normal; } \n'
-		+		'div, p { text-align: justify; margin: 0.5em 0em 0em 0em; } \n'
-		+		'div.title { text-align: center; font-size:210%; } \n'
-		+		'img { margin-bottom: 0.5em; } \n'
-		+		'table.propertyTable { width:100%; border: 0px; border-collapse:collapse; margin: 0.5em 0em 0em 0em; } \n'
-		+		'td.propertyTitle { width:25%; border: 0px; vertical-align:top; font-size: 90%; font-style: italic; } \n'
-//		+		'h5 { font-family:Arial,sans-serif; font-size:110%; font-weight: normal; margin: 0.5em 0em 0em 0em; } \n'
-		+		'h4 { font-family:Arial,sans-serif; font-size:120%; font-weight: normal; margin: 0.5em 0em 0em 0em; } \n'
-		+		'h3 { font-family:Arial,sans-serif; font-size:140%; font-weight: normal; margin: 0.8em 0em 0em 0em; } \n'
+		+		'div, p { text-align: justify; margin: 0.6em 0em 0em 0em; } \n'
+		+		'div.title { text-align: center; font-size:210%; margin-top:3.6em } \n'
+		+		'table.propertyTable { width:100%; border: 0px; border-collapse:collapse; margin: 0.6em 0em 0em 0em; padding: 0;} \n'
+		+		'td.propertyTitle { width:25%; border: 0px; vertical-align:top; font-size: 90%; font-style: italic; margin 0; padding: 0em 0.2em 0em 0em; } \n'
+		+		'table.stdInlineWithBorder, table.doors-table { width:100%; border: 1px solid #DDDDDD; border-collapse:collapse; vertical-align:top; margin: 0; padding: 0; } \n'
+		+		'table.stdInlineWithBorder th, table.stdInlineWithBorder td, table.doors-table th, table.doors-table td { border: 1px solid  #DDDDDD; margin: 0; padding: 0 0.1em 0 0.1em; font-size: 90% } \n'
+//		+		'h5 { font-family:Arial,sans-serif; font-size:110%; font-weight: normal; margin: 0.6em 0em 0em 0em; } \n'
+		+		'h4 { font-family:Arial,sans-serif; font-size:120%; font-weight: normal; margin: 0.6em 0em 0em 0em; } \n'
+		+		'h3 { font-family:Arial,sans-serif; font-size:140%; font-weight: normal; margin: 0.9em 0em 0em 0em; } \n'
 		+		'h2 { font-family:Arial,sans-serif; font-size:160%; font-weight: normal; margin: 1.2em 0em 0em 0em; } \n'
 		+		'h1 { font-family:Arial,sans-serif; font-size:180%; font-weight: normal; margin: 1.8em 0em 0em 0em; } \n';
 	ePub.container = 
-				'<?xml version="1.0" encoding="utf-8"?>'
+				'<?xml version="1.0" encoding="UTF-8"?>'
 		+		'<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">'
 		+			'<rootfiles>'
 		+				'<rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>'
 		+			'</rootfiles>'
 		+		'</container>';
 	ePub.content = 
-				'<?xml version="1.0" encoding="utf-8"?>'
+				'<?xml version="1.0" encoding="UTF-8"?>'
 		+		'<package xmlns="http://www.idpf.org/2007/opf" unique-identifier="BookID" version="2.0" >'
 		+		'<metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">'
-		+			'<dc:identifier id="BookID" opf:scheme="UUID">06282007214712</dc:identifier>'	// ToDo
+		+			'<dc:identifier id="BookID" opf:scheme="UUID">SpecIF-'+specifData.id+'</dc:identifier>'	
 		+			'<dc:title>'+specifData.title+'</dc:title>'
 		+			'<dc:creator opf:role="aut">'+specifData.createdBy.familyName+', '+specifData.createdBy.givenName+'</dc:creator>'
 		+			'<dc:publisher>'+specifData.createdBy.org.organizationName+'</dc:publisher>'
@@ -69,11 +70,11 @@ function toEpub( specifData, opts ) {
 		+		'</package>';
 
 	ePub.toc = 	
-				'<?xml version="1.0" encoding="utf-8"?>'
+				'<?xml version="1.0" encoding="UTF-8"?>'
 		+		'<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">'
 		+		'<head>'
-		+			'<meta name="dtb:uid" content="06282007214712"/>'	// ToDo
-		+			'<meta name="dtb:depth" content="1"/>'
+		+			'<meta name="dtb:uid" content="SpecIF-'+specifData.id+'"/>'	
+		+			'<meta name="dtb:depth" content="1"/>'				// Verschachtelungstiefe
 		+			'<meta name="dtb:totalPageCount" content="0"/>'
 		+			'<meta name="dtb:maxPageNumber" content="0"/>'
 		+		'</head>'
@@ -88,6 +89,7 @@ function toEpub( specifData, opts ) {
 		+			'</navPoint>'
 */
 	for( i=0,I=ePub.headings.length; i<I; i++ ) {
+		// not all reader support nested ncx, so we indent the title instead:
 		ePub.toc += 	'<navPoint id="tocHd'+i+'" playOrder="'+(i+1)+'">'
 			+				'<navLabel><text>'+ePub.headings[i].title+'</text></navLabel>'
 			+				'<content src="Text/sect'+ePub.headings[i].section+'.xhtml#hd'+i+'"/>'
@@ -136,7 +138,7 @@ function toEpub( specifData, opts ) {
 			// https://stackoverflow.com/a/42916772/2214
 			xhr.responseType = 'blob';
 			xhr.onreadystatechange = function () {
-				console.debug('xhr',this.readyState,this.status)
+//				console.debug('xhr',this.readyState,this.status)
 				if (this.readyState==4 && this.status==200) {
 //					console.debug(this);
 					if( typeof cFn=="function" ) cFn(this)

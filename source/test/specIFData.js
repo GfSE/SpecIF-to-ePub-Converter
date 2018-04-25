@@ -20,7 +20,7 @@ function specifData() {
             "familyName": "von Dungern",
             "givenName": "Oskar",
             "org": {
-                "organizationName": "enso"
+                "organizationName": "adesso AG"
             },
             "email": {
                 "type": "text/html",

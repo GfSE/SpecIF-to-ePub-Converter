@@ -20,7 +20,11 @@
 (function() {
 	// the DOM is available now.
 	var specif = specifData(),
-		options = { filePath: 'https://se.reqif.net/reqif/v0.92/projects/'+specif.id+'/rev/0/files/' };
+		options = { 
+			filePath: 'https://se.reqif.net/reqif/v0.92/projects/'+specif.id+'/rev/0/files/',
+			hiddenProperties: [{title:'SpecIF:Type',value:'SpecIF:Folder'},{title:'SpecIF:Type',value:'Folder'}],
+			hideEmptyProperties: true
+		};
 	toEpub( specif, options );
 })()
 </script>

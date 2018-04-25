@@ -27,6 +27,7 @@ function toXhtml( specifData, opts ) {
 	xhtml.sections.push(
 		xhtmlOf( 
 			specifData.title,
+			'',
 			'<div class="title">'+specifData.title+'</div>'
 		)
 	);
@@ -34,13 +35,14 @@ function toXhtml( specifData, opts ) {
 		pushHeading( specifData.hierarchies[h].title, 1 );
 		xhtml.sections.push(
 			xhtmlOf( 
+				specifData.title,
 				specifData.hierarchies[h].title,
 				chapter( specifData.hierarchies[h], 1 )
 			)
 		)
 	};
 		
-	console.debug('xhtml',xhtml);
+//	console.debug('xhtml',xhtml);
 	return xhtml
 	
 	function itemById(L,id) {
@@ -99,30 +101,34 @@ function toXhtml( specifData, opts ) {
 						ti = r.properties[a].value;
 						break
 				}
-			}
-		else
+			};
+		if( !ti )
 //			ti = utf8ToXmlChar( r.title );
 			ti = r.title;
 		pushHeading( ti, lvl );
 		return '<h'+h+' id="hd'+(xhtml.headings.length-1)+'">'+(ti?ic+ti:'')+'</h'+h+'>'
 	}
-	function contentOf( r, rC, opts ) {
+	function propertiesOf( r, rC, opts ) {
 		// return the content of all properties, sorted by description and other properties:
 		if( !r.properties || r.properties.length<1 ) return '';
-		let a=null, A=null,
-			ct = '<table class="propertyTable">';
+		let a=null, A=null, ct = '',hPi=null;
 		// The content of the title property is already used as chapter title; no need to repeat, here.
 		// First the properties used for description in full width:
 		for( a=0,A=r.properties.length; a<A; a++ ) {
 			if( opts.headingProperties.indexOf(r.properties[a].title)>-1
 				|| opts.titleProperties.indexOf(r.properties[a].title)>-1 ) continue;
-			if( opts.descriptionProperties.indexOf(r.properties[a].title)>-1 ) {
-				ct += '<tr><td colspan="2">'+valOf( r.properties[a] )+'</td></tr>'
+			if( r.properties[a].value
+				&& opts.descriptionProperties.indexOf(r.properties[a].title)>-1 ) {
+				ct += '<div>'+valOf( r.properties[a] )+'</div>'
 			}
 		};
 		// Finally, the remaining properties with property title (name) and value:
+		ct += '<table class="propertyTable">';
 		for( a=0,A=r.properties.length; a<A; a++ ) {
-			if( opts.headingProperties.indexOf(r.properties[a].title)>-1
+			hPi = indexBy(opts.hiddenProperties,'title',r.properties[a].title);
+			if( opts.hideEmptyProperties && !r.properties[a].value
+				|| hPi>-1 && ( opts.hiddenProperties[hPi].value==undefined || opts.hiddenProperties[hPi].value==r.properties[a].value )
+				|| opts.headingProperties.indexOf(r.properties[a].title)>-1
 				|| opts.titleProperties.indexOf(r.properties[a].title)>-1 
 				|| opts.descriptionProperties.indexOf(r.properties[a].title)>-1 ) continue;
 			ct += '<tr><td class="propertyTitle">'+r.properties[a].title+'</td><td>'+valOf( r.properties[a] )+'</td></tr>'
@@ -305,8 +311,11 @@ function toXhtml( specifData, opts ) {
 			}
 		}
 	}
+	function statementsOf( r, opts ) {
+		return ''
+	}
 	function chapter( nd, lvl ) {
-		console.debug( nd, lvl )
+//		console.debug( nd, lvl )
 		if( !nd.nodes || nd.nodes.length<1 ) return '';
 		let i=null, I=null, r=null, rC= null;
 		var ch = '';
@@ -314,21 +323,22 @@ function toXhtml( specifData, opts ) {
 			r = itemById( specifData.resources,nd.nodes[i].resource );
 			rC = itemById( specifData.resourceClasses, r['class'] );
 			ch += 	titleOf( r, rC, lvl, opts )
-				+	contentOf( r, rC, opts )
+				+	propertiesOf( r, rC, opts )
+				+	statementsOf( r, opts )
 				+	chapter( nd.nodes[i], lvl+1 )
 		};
 		return ch
 	}
-	function xhtmlOf( title, body ) {
-		return	'<?xml version="1.0" encoding="utf-8"?>'
+	function xhtmlOf( headTitle, sectTitle, body ) {
+		return	'<?xml version="1.0" encoding="UTF-8"?>'
 		+		'<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">'
 		+		'<html xmlns="http://www.w3.org/1999/xhtml">'
 		+			'<head>'
 		+				'<link rel="stylesheet" type="text/css" href="../Styles/styles.css" />'
-		+				'<title>'+title+'</title>'
+		+				'<title>'+headTitle+'</title>'
 		+			'</head>'
 		+			'<body>'
-		+				'<h1 id="hd0">'+title+'</h1>'
+		+	(sectTitle?	'<h1 id="hd0">'+sectTitle+'</h1>' : '')
 		+				body
 		+			'</body>'
 		+		'</html>'

@@ -5,6 +5,11 @@ function toEpub( specifData, opts ) {
 	// Check for missing options:
 	if ( !opts || !opts.filePath ) return null;
 	opts.epubImgPath = '../Images/';
+	if( !opts.metaFontSize ) opts.metaFontSize = '70%';	
+	if( !opts.metaFontColor ) opts.metaFontColor = '#0071B9';	// adesso blue
+	if( !opts.linkFontColor ) opts.linkFontColor = '#0071B9';
+//	if( !opts.linkFontColor ) opts.linkFontColor = '#005A92';	// darker
+	if( !opts.linkNotUnderlined ) opts.linkNotUnderlined = false;
 		
 	// All required parameters are available, so we can begin.
 	let i=null, I=null,
@@ -20,9 +25,13 @@ function toEpub( specifData, opts ) {
 	ePub.styles = 	
 				'body { margin-top:2%; margin-right:2%; margin-bottom:2%; margin-left:2%; font-family:Arial,sans-serif; font-size:100%; font-weight: normal; } \n'
 		+		'div, p { text-align: justify; margin: 0.6em 0em 0em 0em; } \n'
-		+		'div.title { text-align: center; font-size:210%; margin-top:3.6em } \n'
-		+		'table.propertyTable { width:100%; border: 0px; border-collapse:collapse; margin: 0.6em 0em 0em 0em; padding: 0;} \n'
-		+		'td.propertyTitle { width:25%; border: 0px; vertical-align:top; font-size: 90%; font-style: italic; margin 0; padding: 0em 0.2em 0em 0em; } \n'
+		+		'div.title { text-align: center; font-size:200%; margin-top:3.6em } \n'
+		+		'.inline-label { font-size: 90%; font-style: italic; margin-top:0.9em; } \n'
+		+		'p.metaTitle { color: '+opts.metaFontColor+'; font-size: 90%; font-style: italic; margin-top:0.9em; } \n'
+		+		'a { color: '+opts.linkFontColor+'; '+(opts.linkNotUnderlined?'text-decoration: none; ':'')+'} \n'
+		+		'table.propertyTable, table.statementTable { color: '+opts.metaFontColor+'; width:100%; border-top: 1px solid #DDDDDD; border-collapse:collapse; margin: 0.6em 0em 0em 0em; padding: 0;} \n'
+		+		'table.propertyTable td, table.statementTable td { font-size: '+opts.metaFontSize+'; border-bottom:  1px solid #DDDDDD; border-collapse:collapse; margin: 0; padding: 0em 0.2em 0em 0.2em; } \n'
+		+		'td.propertyTitle, td.statementTitle { font-style: italic; } \n'
 		+		'table.stdInlineWithBorder, table.doors-table { width:100%; border: 1px solid #DDDDDD; border-collapse:collapse; vertical-align:top; margin: 0; padding: 0; } \n'
 		+		'table.stdInlineWithBorder th, table.stdInlineWithBorder td, table.doors-table th, table.doors-table td { border: 1px solid  #DDDDDD; margin: 0; padding: 0 0.1em 0 0.1em; font-size: 90% } \n'
 //		+		'h5 { font-family:Arial,sans-serif; font-size:110%; font-weight: normal; margin: 0.6em 0em 0em 0em; } \n'
@@ -92,7 +101,7 @@ function toEpub( specifData, opts ) {
 		// not all reader support nested ncx, so we indent the title instead:
 		ePub.toc += 	'<navPoint id="tocHd'+i+'" playOrder="'+(i+1)+'">'
 			+				'<navLabel><text>'+ePub.headings[i].title+'</text></navLabel>'
-			+				'<content src="Text/sect'+ePub.headings[i].section+'.xhtml#hd'+i+'"/>'
+			+				'<content src="Text/sect'+ePub.headings[i].section+'.xhtml#'+ePub.headings[i].id+'"/>'
 			+			'</navPoint>'
 	};
 	ePub.toc +=	'</navMap>'

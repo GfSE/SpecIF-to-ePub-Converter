@@ -1,6 +1,9 @@
 function toXhtml( specifData, opts ) {
 	"use strict";
 	// Accepts data-sets according to SpecIF v0.10.4 or v0.11.2 and later.
+	// Limitations:
+	// - HTML ids are made from resource ids, so multiple reference of a resource results in mutiple occurrences of the same id.
+	// - Title links are only correct if they reference objects in the same SpecIF hierarchy (hence, the same xhtml file)
 
 	// Check for missing options:
 //	if( !opts ) return;
@@ -10,6 +13,14 @@ function toXhtml( specifData, opts ) {
 	if( !opts.descriptionProperties ) opts.descriptionProperties = ['dcterms:description','DC.description','SpecIF:Diagram','ReqIF.Text','Description','Beschreibung'];
 	if( !opts.hiddenProperties ) opts.hiddenProperties = [];
 	if( !opts.stereotypes ) opts.stereotypes = ['SpecIF:Stereotype'];	
+	if( !opts.propertiesLabel ) opts.propertiesLabel = ['Properties'];	
+	if( !opts.statementsLabel ) opts.statementsLabel = ['Statements'];	
+	if( !opts.titleLinkBegin ) opts.titleLinkBegin = '\\[\\[';		// must escape javascript AND RegExp
+	if( !opts.titleLinkEnd ) opts.titleLinkEnd = '\\]\\]';			// must escape javascript AND RegExp
+	if( opts.titleLinkMinLength==undefined ) opts.titleLinkMinLength = 4;	
+	opts.addTitleLinks = opts.titleLinkBegin && opts.titleLinkEnd && opts.titleLinkMinLength>0;
+	if( opts.titleLinkBegin && opts.titleLinkEnd )
+		opts.RETitleLink = new RegExp( opts.titleLinkBegin+'(.+?)'+opts.titleLinkEnd, 'g' );
 	
 	// All required parameters are available, so we can begin.
 	var xhtml = {
@@ -23,19 +34,21 @@ function toXhtml( specifData, opts ) {
 		xhtml.images = [];
 	opts.collectReferencedFiles = xhtml.images.length<1;
 		
-//	pushHeading( specifData.title, 1 );
+//	pushHeading( specifData.title, specifData.id, 1 );
 	xhtml.sections.push(
 		xhtmlOf( 
 			specifData.title,
-			'',
+			null,
+			null,
 			'<div class="title">'+specifData.title+'</div>'
 		)
 	);
 	for( var h=0,H=specifData.hierarchies.length; h<H; h++ ) {
-		pushHeading( specifData.hierarchies[h].title, 1 );
+		pushHeading( specifData.hierarchies[h].title, specifData.hierarchies[h].id, {level: 1} );
 		xhtml.sections.push(
 			xhtmlOf( 
 				specifData.title,
+				specifData.hierarchies[h].id,
 				specifData.hierarchies[h].title,
 				chapter( specifData.hierarchies[h], 1 )
 			)
@@ -79,39 +92,111 @@ function toXhtml( specifData, opts ) {
 		//                    get propertyType
 		//	   get dataType
 	}
-	function pushHeading( t, lvl ) {
+	function pushHeading( t, id, pars ) {
 		xhtml.headings.push({
 				title: t,
+				id: id,
 				section: xhtml.sections.length,  // the index of the section in preparation (before it is pushed)
-				level: lvl
+				level: pars.level
 		})
 	}
-	function titleOf( r, rC, lvl, opts ) {
-		let ic = rC.icon,
-			h = rC.isHeading?2:3,
-			ti = null;
+	function titleValOf( r, rC, opts ) {
+		if( r.properties ) {
+			let pr=null;
+			for( var a=0,A=r.properties.length; a<A; a++ ) {
+				pr = r.properties[a];
+				rC.isHeading = rC.isHeading || opts.headingProperties.indexOf(pr.title)>-1;
+				if( opts.headingProperties.indexOf(pr.title)>-1
+					|| opts.titleProperties.indexOf(pr.title)>-1 ) {
+//						ti = utf8ToXmlChar( pr.value );
+						return pr.value
+				}
+			}
+		};
+//		return utf8ToXmlChar( r.title )
+		return r.title
+	}
+	function titleOf( r, rC, pars, opts ) {
+		let ic = rC.icon;
 		if( ic==undefined ) ic = '';
 //		if( ic ) ic = utf8ToXmlChar( ic )+'&#160;'; // non-breakable space
 		if( ic ) ic += '&#160;'; // non-breakable space
-		if( r.properties ) 
-			for( var a=0,A=r.properties.length; a<A; a++ ) {
-				if( opts.headingProperties.indexOf(r.properties[a].title)>-1
-					|| opts.titleProperties.indexOf(r.properties[a].title)>-1 ) {
-//						ti = utf8ToXmlChar( r.properties[a].value );
-						ti = r.properties[a].value;
-						break
-				}
+		let ti = titleValOf( r, rC, opts );
+		if( !pars || pars.level<1 ) return (ti?ic+ti:'');
+		if( rC.isHeading ) pushHeading( ti, r.id, pars );
+		let h = rC.isHeading?2:3;
+		return '<h'+h+' id="'+r.id+'">'+(ti?ic+ti:'')+'</h'+h+'>'
+	}
+	function statementsOf( r, opts ) {
+		if( !opts.statementsLabel ) return '';
+		let i, I, sts={}, st, cl, cid, oid, sid, ct='', r2, noSts=true;
+		// Collect statements by type:
+		for( i=0, I=specifData.statements.length; i<I; i++ ) {
+			st = specifData.statements[i];
+			cid = st['class'];
+			// SpecIF v0.10.x: subject/object without revision, v0.11.y: with revision
+			oid = st.object.id || st.object;
+			sid = st.subject.id || st.subject;
+//			console.debug(st,cid);
+			if( sid==r.id || oid==r.id ) {
+				noSts = false;
+				if( !sts[cid] ) sts[cid] = {subjects:[],objects:[]};
+				if( sid==r.id ) sts[cid].objects.push( itemById(specifData.resources,oid) )
+				else sts[cid].subjects.push( itemById(specifData.resources,sid) )
+			}
+		};
+//		console.debug( 'statements', r.title, sts );
+//		if( Object.keys(sts).length<1 ) return '';
+		if( noSts ) return '';
+		ct = '<p class="metaTitle">'+opts.statementsLabel+'</p>';
+		ct += '<table class="statementTable"><tbody>';
+		for( cid in sts ) {
+			// we don't have (and don't need) the individual statement, just the class:
+			cl = itemById(specifData.statementClasses,cid);
+/*			// 5 columns:
+			ct += '<tr><td>';
+			for( i=0, I=sts[cid].subjects.length; i<I; i++ ) {
+				r2 = sts[cid].subjects[i];
+//				console.debug('r2',r2,itemById( specifData.resourceClasses, r2['class']))
+				ct += '<a href="#'+r2.id+'">'+titleOf( r2, itemById( specifData.resourceClasses, r2['class']), null, opts )+'</a><br/>'
 			};
-		if( !ti )
-//			ti = utf8ToXmlChar( r.title );
-			ti = r.title;
-		pushHeading( ti, lvl );
-		return '<h'+h+' id="hd'+(xhtml.headings.length-1)+'">'+(ti?ic+ti:'')+'</h'+h+'>'
+			ct += '</td><td class="statementTitle">'+(sts[cid].subjects.length>0?cl.title:'');
+			ct += '</td><td>'+titleOf( r, itemById(specifData.resourceClasses,r['class']), null, opts );
+			ct += '</td><td class="statementTitle">'+(sts[cid].objects.length>0?cl.title:'')+'</td><td>';
+			for( i=0, I=sts[cid].objects.length; i<I; i++ ) {
+				r2 = sts[cid].objects[i];
+				ct += '<a href="#'+r2.id+'">'+titleOf( r2, itemById( specifData.resourceClasses, r2['class']), null, opts )+'</a><br/>'
+			};
+			ct += '</td></tr>'
+*/
+			// 3 columns:
+			if( sts[cid].subjects.length>0 ) {
+				ct += '<tr><td>';
+				for( i=0, I=sts[cid].subjects.length; i<I; i++ ) {
+					r2 = sts[cid].subjects[i];
+	//				console.debug('r2',r2,itemById( specifData.resourceClasses, r2['class']))
+					ct += '<a href="#'+r2.id+'">'+titleOf( r2, itemById( specifData.resourceClasses, r2['class']), null, opts )+'</a><br/>'
+				};
+				ct += '</td><td class="statementTitle">'+cl.title;
+				ct += '</td><td>'+titleOf( r, itemById(specifData.resourceClasses,r['class']), null, opts );
+				ct += '</td></tr>'
+			};
+			if( sts[cid].objects.length>0 ) {
+				ct += '<tr><td>'+titleOf( r, itemById(specifData.resourceClasses,r['class']), null, opts );
+				ct += '</td><td class="statementTitle">'+cl.title+'</td><td>';
+				for( i=0, I=sts[cid].objects.length; i<I; i++ ) {
+					r2 = sts[cid].objects[i];
+					ct += '<a href="#'+r2.id+'">'+titleOf( r2, itemById( specifData.resourceClasses, r2['class']), null, opts )+'</a><br/>'
+				};
+				ct += '</td></tr>'
+			}
+		};
+		return ct + '</tbody></table>'
 	}
 	function propertiesOf( r, rC, opts ) {
-		// return the content of all properties, sorted by description and other properties:
 		if( !r.properties || r.properties.length<1 ) return '';
-		let a=null, A=null, ct = '',hPi=null;
+		// return the content of all properties, sorted by description and other properties:
+		let a=null, A=null, c1='', c2='', hPi=null;
 		// The content of the title property is already used as chapter title; no need to repeat, here.
 		// First the properties used for description in full width:
 		for( a=0,A=r.properties.length; a<A; a++ ) {
@@ -119,11 +204,11 @@ function toXhtml( specifData, opts ) {
 				|| opts.titleProperties.indexOf(r.properties[a].title)>-1 ) continue;
 			if( r.properties[a].value
 				&& opts.descriptionProperties.indexOf(r.properties[a].title)>-1 ) {
-				ct += '<div>'+valOf( r.properties[a] )+'</div>'
+				c1 += valOf( r.properties[a] )
 			}
 		};
+		if( !opts.propertiesLabel ) return '';
 		// Finally, the remaining properties with property title (name) and value:
-		ct += '<table class="propertyTable">';
 		for( a=0,A=r.properties.length; a<A; a++ ) {
 			hPi = indexBy(opts.hiddenProperties,'title',r.properties[a].title);
 			if( opts.hideEmptyProperties && !r.properties[a].value
@@ -131,9 +216,10 @@ function toXhtml( specifData, opts ) {
 				|| opts.headingProperties.indexOf(r.properties[a].title)>-1
 				|| opts.titleProperties.indexOf(r.properties[a].title)>-1 
 				|| opts.descriptionProperties.indexOf(r.properties[a].title)>-1 ) continue;
-			ct += '<tr><td class="propertyTitle">'+r.properties[a].title+'</td><td>'+valOf( r.properties[a] )+'</td></tr>'
+			c2 += '<tr><td class="propertyTitle">'+r.properties[a].title+'</td><td>'+valOf( r.properties[a] )+'</td></tr>'
 		};
-		return ct + '</table>'
+		if( !c2 ) return c1;
+		return c1+'<p class="metaTitle">'+opts.propertiesLabel+'</p><table class="propertyTable"><tbody>'+c2+'</tbody></table>'
 		
 		function fileRef( txt, opts ) {
 			if( !opts || !opts.filePath ) return txt;
@@ -286,6 +372,55 @@ function toXhtml( specifData, opts ) {
 	//		console.debug('fileRef result: ', txt);
 			return txt
 		}
+		function titleLinks( str, opts ) {
+			// Transform sub-strings with dynamic linking pattern to internal links.
+			// Syntax:
+			// - A resource (object) title between CONFIG.dynLinkBegin and CONFIG.dynLinkEnd will be transformed to a link to that resource.
+			// - Icons in front of titles are ignored
+			// - Titles shorter than 4 characters are ignored
+			// - see: https://www.mediawiki.org/wiki/Help:Links
+
+//			console.log('*',opts.RETitleLink,str);
+			
+			// in certain situations, remove the dynamic linking pattern from the text:
+			if( !opts.addTitleLinks )
+				return str.replace( opts.RETitleLink, function( $0, $1 ) { return $1 } )
+				
+			// else, find all dynamic link patterns in the current property and replace them by a link, if possible:
+			let replaced = null;
+			do {
+				replaced = false;
+				str = str.replace( opts.RETitleLink, 
+					function( $0, $1 ) { 
+						replaced = true;
+//						if( $1.length<opts.titleLinkMinLength ) return $1;
+						let m=$1.toLowerCase(), cO=null, ti=null;
+						// is ti a title of any resource?
+						for( var x=specifData.resources.length-1;x>-1;x-- ) {
+							cO = specifData.resources[x];
+										
+							// avoid self-reflection:
+//							if(ob.id==cO.id) continue;
+
+							// disregard resources which are not referenced in the current tree (selected spec):
+//	??						if( myProject.selectedSpec.objectRefs.indexOf(cO.id)<0 ) continue;
+
+							// get the pure title text:
+							ti = titleValOf( cO, itemById( specifData.resourceClasses, cO['class'] ), opts );
+
+							// disregard objects whose title is too short:
+							if( !ti || ti.length<opts.titleLinkMinLength ) continue;
+
+							// if the titleLink content equals a resource's title, replace it with a link:
+							if(m==ti.toLowerCase()) return '<a href="#'+cO.id+'">'+$1+'</a>'
+						};
+						// The dynamic link has NOT been matched/replaced, so mark it:
+						return '<span style="color:#D82020">'+$1+'</span>'
+					}
+				)
+			} while( replaced );
+			return str
+		}
 		function valOf( pr ) {
 			// return the value of a single property:
 			let dT = dataTypeOf(specifData.dataTypes, rC, pr['class'] );
@@ -304,32 +439,35 @@ function toXhtml( specifData, opts ) {
 					};
 					return ct;
 				case 'xhtml':
-					return fileRef( pr.value, opts )
-//				case 'xs:string':
+					return titleLinks( fileRef( pr.value, opts ), opts )
+//					return fileRef( pr.value, opts )
+				case 'xs:string':
+					return titleLinks( pr.value, opts )
 				default:
 					return pr.value
 			}
 		}
 	}
-	function statementsOf( r, opts ) {
-		return ''
-	}
 	function chapter( nd, lvl ) {
 //		console.debug( nd, lvl )
 		if( !nd.nodes || nd.nodes.length<1 ) return '';
-		let i=null, I=null, r=null, rC= null;
+		let i=null, I=null, r=null, rC=null,
+			params={
+				level: lvl,
+				nodeId: nd.id
+			};
 		var ch = '';
 		for( i=0,I=nd.nodes.length; i<I; i++ ) {
 			r = itemById( specifData.resources,nd.nodes[i].resource );
 			rC = itemById( specifData.resourceClasses, r['class'] );
-			ch += 	titleOf( r, rC, lvl, opts )
+			ch += 	titleOf( r, rC, params, opts )
 				+	propertiesOf( r, rC, opts )
 				+	statementsOf( r, opts )
 				+	chapter( nd.nodes[i], lvl+1 )
 		};
 		return ch
 	}
-	function xhtmlOf( headTitle, sectTitle, body ) {
+	function xhtmlOf( headTitle, sectId, sectTitle, body ) {
 		return	'<?xml version="1.0" encoding="UTF-8"?>'
 		+		'<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">'
 		+		'<html xmlns="http://www.w3.org/1999/xhtml">'
@@ -338,7 +476,7 @@ function toXhtml( specifData, opts ) {
 		+				'<title>'+headTitle+'</title>'
 		+			'</head>'
 		+			'<body>'
-		+	(sectTitle?	'<h1 id="hd0">'+sectTitle+'</h1>' : '')
+		+	(sectTitle?	'<h1'+(sectId?' id="'+sectId+'"':'')+'>'+sectTitle+'</h1>' : '')
 		+				body
 		+			'</body>'
 		+		'</html>'

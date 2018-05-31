@@ -3619,14 +3619,8 @@ function specifData() {
             "revision": 1,
             "changedAt": "2016-05-26T08:59:00+02:00",
             "class": "RT-Visibility",
-            "subject": {
-                "id": "Pln-5a4755dd0000bca801375293a62c90a8",
-                "revision": 0
-            },
-            "object": {
-                "id": "MEl-5a4dd77b0000bca8013736c6912ad291",
-                "revision": 0
-            }
+            "subject": "Pln-5a4755dd0000bca801375293a62c90a8",
+            "object": "MEl-5a4dd77b0000bca8013736c6912ad291"
         }, {
             "id": "RVis-Pln-5a4755dd0000bca801375293a62c90a8-MEl-5a489c300000bca80137ee1373c16844",
             "title": "shows",

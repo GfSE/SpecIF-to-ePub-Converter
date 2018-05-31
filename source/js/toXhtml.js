@@ -11,30 +11,46 @@ function toXhtml( specifData, opts ) {
 	if( !opts.headingProperties ) opts.headingProperties = ['SpecIF:Heading','ReqIF.ChapterName','Heading','Überschrift'];
 	if( !opts.titleProperties ) opts.titleProperties = ['dcterms:title','DC.title','ReqIF.Name','Title','Titel'];
 	if( !opts.descriptionProperties ) opts.descriptionProperties = ['dcterms:description','DC.description','SpecIF:Diagram','ReqIF.Text','Description','Beschreibung'];
+	// If a hidden property is defined with value, it is suppressed only if it has this value;
+	// if the value is undefined, the property is suppressed in all cases.
 	if( !opts.hiddenProperties ) opts.hiddenProperties = [];
-	if( !opts.stereotypes ) opts.stereotypes = ['SpecIF:Stereotype'];	
+	if( !opts.stereotypeProperties ) opts.stereotypeProperties = ['SpecIF:Stereotype'];	
 	if( !opts.propertiesLabel ) opts.propertiesLabel = ['Properties'];	
 	if( !opts.statementsLabel ) opts.statementsLabel = ['Statements'];	
 	if( !opts.titleLinkBegin ) opts.titleLinkBegin = '\\[\\[';		// must escape javascript AND RegExp
 	if( !opts.titleLinkEnd ) opts.titleLinkEnd = '\\]\\]';			// must escape javascript AND RegExp
-	if( opts.titleLinkMinLength==undefined ) opts.titleLinkMinLength = 4;	
+	if( opts.titleLinkMinLength==undefined ) opts.titleLinkMinLength = 3;	
 	opts.addTitleLinks = opts.titleLinkBegin && opts.titleLinkEnd && opts.titleLinkMinLength>0;
 	if( opts.titleLinkBegin && opts.titleLinkEnd )
 		opts.RETitleLink = new RegExp( opts.titleLinkBegin+'(.+?)'+opts.titleLinkEnd, 'g' );
 	
+	switch( specifData.specifVersion ) {
+		case '0.10.3':
+			var rClasses = 'resourceTypes',
+				sClasses = 'statementTypes',
+				pClasses = 'propertyTypes',
+				rClass = 'resourceType',				
+				sClass = 'statementType',
+				pClass = 'propertyType';
+			break;
+		case '0.10.4':
+			var rClasses = 'resourceClasses',
+				sClasses = 'statementClasses',
+				pClasses = 'propertyClasses',
+				rClass = 'class';
+				sClass = 'class'
+				pClass = 'class';
+			break
+	};
+	
 	// All required parameters are available, so we can begin.
 	var xhtml = {
-			headings: [],
-			sections: []
+			headings: [],		// used to build the ePub table of contents
+			sections: [],		// a xhtml file per SpecIF hierarchy
+			images: []
 		};
 	
-	if( specifData.files && specifData.files.length>0 )
-		xhtml.images = specifData.files
-	else
-		xhtml.images = [];
-	opts.collectReferencedFiles = xhtml.images.length<1;
-		
-//	pushHeading( specifData.title, specifData.id, 1 );
+	// The first section is a xhtml-file with the title page:
 	xhtml.sections.push(
 		xhtmlOf( 
 			specifData.title,
@@ -43,64 +59,35 @@ function toXhtml( specifData, opts ) {
 			'<div class="title">'+specifData.title+'</div>'
 		)
 	);
+	
+	// For each SpecIF hierarchy a xhtml-file is created and returned as subsequent sections:
+	let firstHierarchySection = xhtml.sections.length;  // index of the next section number
 	for( var h=0,H=specifData.hierarchies.length; h<H; h++ ) {
-		pushHeading( specifData.hierarchies[h].title, specifData.hierarchies[h].id, {level: 1} );
+		pushHeading( specifData.hierarchies[h].title, {nodeId: specifData.hierarchies[h].id, level: 1} );
 		xhtml.sections.push(
 			xhtmlOf( 
 				specifData.title,
 				specifData.hierarchies[h].id,
 				specifData.hierarchies[h].title,
-				chapter( specifData.hierarchies[h], 1 )
+				paragraphOf( specifData.hierarchies[h], 1 )
 			)
 		)
 	};
-		
+
 //	console.debug('xhtml',xhtml);
 	return xhtml
 	
-	function itemById(L,id) {
-		if(!L||!id) return undefined;
-		// given the ID of an element in a list, return the element itself:
-//		id = id.trim();
-		for( var i=L.length-1;i>-1;i-- )
-			if( L[i].id === id ) return L[i];   // return list item
-		return undefined
-	}
-	function indexBy( L, p, s ) {
-		if(!L||!p||!s) return -1;
-		// Return the index of an element in list 'L' whose property 'p' equals searchterm 's':
-		// hand in property and searchTerm as string !
-		for( var i=L.length-1;i>-1;i-- )
-			if (L[i][p] === s) return i;
-		return -1
-	}
-/*	function utf8ToXmlChar(str) {
-		let i = str.length,
-			aRet = [];
-		while (i--) {
-			let iC = str[i].charCodeAt(0);
-			if (iC < 65 || iC > 127 || (iC > 90 && iC < 97)) aRet[i] = '&#' + iC + ';';
-			else aRet[i] = str[i];
-		}
-		return aRet.join('');
-	}
-*/
-	function dataTypeOf( dTs, sT, pCid ) {
-//		console.debug( dTs, sT, pCid );
-		// given an attributeType ID, return it's dataType:
-		return itemById( dTs, itemById( sT.propertyClasses, pCid ).dataType )
-		//                    get propertyType
-		//	   get dataType
-	}
-	function pushHeading( t, id, pars ) {
+	// ---------------
+	function pushHeading( t, pars ) {
 		xhtml.headings.push({
+				id: pars.nodeId,
 				title: t,
-				id: id,
 				section: xhtml.sections.length,  // the index of the section in preparation (before it is pushed)
 				level: pars.level
 		})
 	}
 	function titleValOf( r, rC, opts ) {
+		// get the title value of the properties:
 		if( r.properties ) {
 			let pr=null;
 			for( var a=0,A=r.properties.length; a<A; a++ ) {
@@ -108,24 +95,22 @@ function toXhtml( specifData, opts ) {
 				rC.isHeading = rC.isHeading || opts.headingProperties.indexOf(pr.title)>-1;
 				if( opts.headingProperties.indexOf(pr.title)>-1
 					|| opts.titleProperties.indexOf(pr.title)>-1 ) {
-//						ti = utf8ToXmlChar( pr.value );
-						return pr.value
+						return escapeHTML( pr.value )
 				}
 			}
 		};
-//		return utf8ToXmlChar( r.title )
+		// ... or take the resource's title, if there is no title property:
 		return r.title
 	}
 	function titleOf( r, rC, pars, opts ) {
 		let ic = rC.icon;
 		if( ic==undefined ) ic = '';
-//		if( ic ) ic = utf8ToXmlChar( ic )+'&#160;'; // non-breakable space
 		if( ic ) ic += '&#160;'; // non-breakable space
 		let ti = titleValOf( r, rC, opts );
 		if( !pars || pars.level<1 ) return (ti?ic+ti:'');
-		if( rC.isHeading ) pushHeading( ti, r.id, pars );
+		if( rC.isHeading ) pushHeading( ti, pars );
 		let h = rC.isHeading?2:3;
-		return '<h'+h+' id="'+r.id+'">'+(ti?ic+ti:'')+'</h'+h+'>'
+		return '<h'+h+' id="'+pars.nodeId+'">'+(ti?ic+ti:'')+'</h'+h+'>'
 	}
 	function statementsOf( r, opts ) {
 		if( !opts.statementsLabel ) return '';
@@ -133,7 +118,7 @@ function toXhtml( specifData, opts ) {
 		// Collect statements by type:
 		for( i=0, I=specifData.statements.length; i<I; i++ ) {
 			st = specifData.statements[i];
-			cid = st['class'];
+			cid = st[sClass];
 			// SpecIF v0.10.x: subject/object without revision, v0.11.y: with revision
 			oid = st.object.id || st.object;
 			sid = st.subject.id || st.subject;
@@ -152,20 +137,20 @@ function toXhtml( specifData, opts ) {
 		ct += '<table class="statementTable"><tbody>';
 		for( cid in sts ) {
 			// we don't have (and don't need) the individual statement, just the class:
-			cl = itemById(specifData.statementClasses,cid);
+			cl = itemById(specifData[sClasses],cid);
 /*			// 5 columns:
 			ct += '<tr><td>';
 			for( i=0, I=sts[cid].subjects.length; i<I; i++ ) {
 				r2 = sts[cid].subjects[i];
-//				console.debug('r2',r2,itemById( specifData.resourceClasses, r2['class']))
-				ct += '<a href="#'+r2.id+'">'+titleOf( r2, itemById( specifData.resourceClasses, r2['class']), null, opts )+'</a><br/>'
+//				console.debug('r2',r2,itemById( specifData[rClasses], r2[rClass]))
+				ct += '<a href="#'+r2.id+'">'+titleOf( r2, itemById( specifData[rClasses], r2[rClass]), null, opts )+'</a><br/>'
 			};
 			ct += '</td><td class="statementTitle">'+(sts[cid].subjects.length>0?cl.title:'');
-			ct += '</td><td>'+titleOf( r, itemById(specifData.resourceClasses,r['class']), null, opts );
+			ct += '</td><td>'+titleOf( r, itemById(specifData[rClasses],r[rClass]), null, opts );
 			ct += '</td><td class="statementTitle">'+(sts[cid].objects.length>0?cl.title:'')+'</td><td>';
 			for( i=0, I=sts[cid].objects.length; i<I; i++ ) {
 				r2 = sts[cid].objects[i];
-				ct += '<a href="#'+r2.id+'">'+titleOf( r2, itemById( specifData.resourceClasses, r2['class']), null, opts )+'</a><br/>'
+				ct += '<a href="#'+r2.id+'">'+titleOf( r2, itemById( specifData[rClasses], r2[rClass]), null, opts )+'</a><br/>'
 			};
 			ct += '</td></tr>'
 */
@@ -174,69 +159,100 @@ function toXhtml( specifData, opts ) {
 				ct += '<tr><td>';
 				for( i=0, I=sts[cid].subjects.length; i<I; i++ ) {
 					r2 = sts[cid].subjects[i];
-	//				console.debug('r2',r2,itemById( specifData.resourceClasses, r2['class']))
-					ct += '<a href="#'+r2.id+'">'+titleOf( r2, itemById( specifData.resourceClasses, r2['class']), null, opts )+'</a><br/>'
+	//				console.debug('r2',r2,itemById( specifData[rClasses], r2[rClass]))
+					ct += '<a href="'+anchorOf( r2 )+'">'+titleOf( r2, itemById( specifData[rClasses], r2[rClass]), null, opts )+'</a><br/>'
 				};
 				ct += '</td><td class="statementTitle">'+cl.title;
-				ct += '</td><td>'+titleOf( r, itemById(specifData.resourceClasses,r['class']), null, opts );
+				ct += '</td><td>'+titleOf( r, itemById(specifData[rClasses],r[rClass]), null, opts );
 				ct += '</td></tr>'
 			};
 			if( sts[cid].objects.length>0 ) {
-				ct += '<tr><td>'+titleOf( r, itemById(specifData.resourceClasses,r['class']), null, opts );
+				ct += '<tr><td>'+titleOf( r, itemById(specifData[rClasses],r[rClass]), null, opts );
 				ct += '</td><td class="statementTitle">'+cl.title+'</td><td>';
 				for( i=0, I=sts[cid].objects.length; i<I; i++ ) {
 					r2 = sts[cid].objects[i];
-					ct += '<a href="#'+r2.id+'">'+titleOf( r2, itemById( specifData.resourceClasses, r2['class']), null, opts )+'</a><br/>'
+					ct += '<a href="'+anchorOf( r2 )+'">'+titleOf( r2, itemById( specifData[rClasses], r2[rClass]), null, opts )+'</a><br/>'
 				};
 				ct += '</td></tr>'
 			}
 		};
 		return ct + '</tbody></table>'
 	}
+	function anchorOf( res ) {
+		// Find the hierarchy node id for a given resource;
+		// the first occurrence is returned:
+		let m=null, M=null, y=null, n=null, N=null, ndId=null;
+		for( m=0, M=specifData.hierarchies.length; m<M; m++ ) {
+			// for all hierarchies starting with the current one 'h':
+			y = (m+h) % M;  
+	//		console.debug( 'nodes', m, y, specifData.hierarchies );
+			if( specifData.hierarchies[y].nodes )
+				for( n=0, N=specifData.hierarchies[y].nodes.length; n<N; n++ ) {
+					ndId = ndByRef( specifData.hierarchies[y].nodes[n] );
+	//				console.debug('ndId',n,ndId);
+					if( ndId ) return ndId		// return node id
+				}
+		};
+		return null;	// not found
+		
+		function ndByRef( nd ) {
+			let ndId=null;
+			if( nd.resource==res.id ) return 'sect'+(y+firstHierarchySection)+'.xhtml#'+nd.id;  // fully qualified anchor including filename
+			if( nd.nodes )
+				for( var t=0, T=nd.nodes.length; t<T; t++ ) {
+					ndId = ndByRef( nd.nodes[t] );
+	//				console.debug('ndId2',n,ndId);
+					if( ndId ) return ndId
+				};
+			return null
+		}
+	}
 	function propertiesOf( r, rC, opts ) {
+		// return the values of all resource's properties as xhtml:
 		if( !r.properties || r.properties.length<1 ) return '';
 		// return the content of all properties, sorted by description and other properties:
-		let a=null, A=null, c1='', c2='', hPi=null;
-		// The content of the title property is already used as chapter title; no need to repeat, here.
-		// First the properties used for description in full width:
+		let a=null, A=null, c1='', c2='', hPi=null, rt=null;
 		for( a=0,A=r.properties.length; a<A; a++ ) {
-			if( opts.headingProperties.indexOf(r.properties[a].title)>-1
-				|| opts.titleProperties.indexOf(r.properties[a].title)>-1 ) continue;
+			rt = r.properties[a].title;
+			// The content of the title property is already used as chapter title; so skip it here:
+			if( opts.headingProperties.indexOf(rt)>-1
+				|| opts.titleProperties.indexOf(rt)>-1 ) continue;
+			// First the resource's description properties in full width:
 			if( r.properties[a].value
-				&& opts.descriptionProperties.indexOf(r.properties[a].title)>-1 ) {
+				&& opts.descriptionProperties.indexOf(rt)>-1 ) {
 				c1 += valOf( r.properties[a] )
 			}
 		};
-		if( !opts.propertiesLabel ) return '';
-		// Finally, the remaining properties with property title (name) and value:
+		// Skip the remaining properties, if no label is provided:
+		if( !opts.propertiesLabel ) return c1;
+		
+		// Finally, list the remaining properties with property title (name) and value:
 		for( a=0,A=r.properties.length; a<A; a++ ) {
-			hPi = indexBy(opts.hiddenProperties,'title',r.properties[a].title);
-			if( opts.hideEmptyProperties && !r.properties[a].value
+			rt = r.properties[a].title;
+			hPi = indexBy(opts.hiddenProperties,'title',rt);
+//			console.debug('hPi',hPi,rt,r.properties[a].value);
+			if( opts.hideEmptyProperties && isEmpty(r.properties[a].value)
 				|| hPi>-1 && ( opts.hiddenProperties[hPi].value==undefined || opts.hiddenProperties[hPi].value==r.properties[a].value )
-				|| opts.headingProperties.indexOf(r.properties[a].title)>-1
-				|| opts.titleProperties.indexOf(r.properties[a].title)>-1 
-				|| opts.descriptionProperties.indexOf(r.properties[a].title)>-1 ) continue;
-			c2 += '<tr><td class="propertyTitle">'+r.properties[a].title+'</td><td>'+valOf( r.properties[a] )+'</td></tr>'
+				|| opts.headingProperties.indexOf(rt)>-1
+				|| opts.titleProperties.indexOf(rt)>-1 
+				|| opts.descriptionProperties.indexOf(rt)>-1 ) continue;
+			c2 += '<tr><td class="propertyTitle">'+rt+'</td><td>'+valOf( r.properties[a] )+'</td></tr>'
 		};
 		if( !c2 ) return c1;
 		return c1+'<p class="metaTitle">'+opts.propertiesLabel+'</p><table class="propertyTable"><tbody>'+c2+'</tbody></table>'
-		
+
+		// ---------------
+		function isEmpty( str ) {
+			return str.replace(/<[^>]+>/g, '').trim().length<1	// strip HTML and trim
+				&& !/<object[^>]+(\/>|>[\s\S]*?<\/object>)/.test(str)
+				&& !/<img[^>]+(\/>|>[\s\S]*?<\/img>)/.test(str)
+		}
 		function fileRef( txt, opts ) {
-			if( !opts || !opts.filePath ) return txt;
+			if( !opts ) return txt;
 	//		if( opts.rev==undefined ) opts.rev = 0;
 			if( opts.imgExtensions==undefined ) opts.imgExtensions = [ 'png', 'jpg', 'svg', 'gif', 'jpeg' ];
 	//		if( opts.clickableElements==undefined ) opts.clickableElements = false;
 			
-				function addFilePath( u ) {
-					if( /^https?:\/\/|^mailto:/i.test( u ) ) {
-						// don't change an external link starting with 'http://', 'https://' or 'mailto:'
-	//					console.debug('addFilePath no change',u);
-						return u  		
-					};
-					// else, add path:
-	//				return opts.serverURL+'/projects/'+opts.projId+'/rev/'+opts.rev+'/files/'+u.replace( /\\/g, '/' )
-					return opts.filePath+u.replace( /\\/g, '/' )
-				}
 				function addEpubPath( u ) {
 					return opts.epubImgPath+withoutPath( u )
 				}
@@ -245,12 +261,12 @@ function toXhtml( specifData, opts ) {
 					if( t==null ) return '';
 					return (' '+t[1])
 				}
-				function getStyle( str ) {
+/*				function getStyle( str ) {
 					var s = /(style="[^"]+")/.exec( str );
 					if( s==null ) return '';  
 					return (' '+s[1])
 				}
-				function getUrl( str ) {
+*/				function getUrl( str ) {
 					// get the URL:
 					var l = /(href|data)="([^"]+)"/.exec( str );  // url in l[2]
 					// return null, because an URL is expected in any case:
@@ -259,24 +275,23 @@ function toXhtml( specifData, opts ) {
 					return l[2]
 				}
 				function withoutPath( str ) {
-					let x = str.replace('\\','/').lastIndexOf('/');
-					return str.substring(x+1)
+					str = str.replace('\\','/');
+					return str.substring(str.lastIndexOf('/')+1)
 				}
 				function fileExt( str ) {
-					let x = str.lastIndexOf('.');
-					return str.substring(x+1)
+					return str.substring( str.lastIndexOf('.')+1 )
 				}
 				function fileName( str ) {
-					let x = str.lastIndexOf('.');
-					return str.substring(0,x)
+					str = str.replace('\\','/');
+					return str.substring( 0, str.lastIndexOf('.') )
 				}
 				function pushReferencedFiles( u, t ) {
-					if( opts.collectReferencedFiles && indexBy( xhtml.images, 'fileName', withoutPath( u ) )<0 ) {
-						// avoid duplicate entries:
+					// avoid duplicate entries:
+					if( indexBy( xhtml.images, 'id', u )<0 ) {
 						xhtml.images.push({
-							fileName: withoutPath( u ),
-							mimeType: t,
-							url: addFilePath(u)
+							id: u,					// is the distinguishing/relative part of the URL
+							title: withoutPath(u),
+							mimeType: t
 						})
 					}
 				}
@@ -301,18 +316,26 @@ function toXhtml( specifData, opts ) {
 			//					This text is shown if alternative image can't be shown
 			//				</xhtml:object>
 			//			</xhtml:object>
-			txt = txt.replace( /<object([^>]+)>[\s\S]*?<object([^>]+)(\/>|>([\s\S]*?)<\/object>)[^>]*<\/object>/gi,   
+			txt = txt.replace( /<object([^>]+)>[\s\S]*?<object([^>]+)(\/>|>([\s\S]*?)<\/object>)[\s\S]*?<\/object>/g,   
 				function( $0, $1, $2, $3, $4 ) {        // description is $4
 					var u1 = getUrl( $1 ),  			// the primary information
 //						t1 = getType( $1 ), 
 						u2 = getUrl( $2 ), 				// the preview image
-						t2 = getType( $2 ), 
-						s2 = getStyle( $2 ); 
+//						s2 = getStyle( $2 ), 
+						t2 = getType( $2 );
 
 					// If there is no description, use the name of the link target:
 					if( !$4 ) {
 						$4 = u1;   // $4 is now the description between object tags
 					};
+					
+					// if the type is svg, png is preferred and available, replace it:
+					let png = itemById( specifData.files, fileName(u2)+'.png' );
+					if( t2.indexOf('svg')>-1 && opts.preferPng && png ) {
+						u2 = png.id.replace('\\','/');
+						t2 = png.mimeType
+					} 
+					
 					pushReferencedFiles( u2, t2 );
 	//				console.debug( $0, $4, u1, t1, u2, t2 );
 					return'<img src="'+addEpubPath(u2)+'" style="max-width:100%" alt="'+$4+'" />'
@@ -324,40 +347,48 @@ function toXhtml( specifData, opts ) {
 			// 2. transform a single object to link+object resp. link+image:
 			//      For example, the ARCWAY Cockpit export uses this pattern:
 			//			<object data=\"files_and_images\\27420ffc0000c3a8013ab527ca1b71f5.svg\" name=\"27420ffc0000c3a8013ab527ca1b71f5.svg\" type=\"image/svg+xml\"/>
-			txt = txt.replace( /<object([^>]+)(\/>|>[^<]*<\/object>)/gi,   //  comprehensive tag or tag pair
-				function( $0, $1, $2 ){ 
+			txt = txt.replace( /<object([^>]+)(\/>|>([\s\S]*?)<\/object>)/g,   //  comprehensive tag or tag pair
+				function( $0, $1, $2, $3 ){ 
 					let u1 = getUrl( $1 ), 
-						t1 = getType( $1 ), 
-						s1 = getStyle( $1 ); 
+//						s1 = getStyle( $1 ), 
+						t1 = getType( $1 );
 
 					// get the file extension:
 					let e = fileExt(u1);
 					if( !e ) return $0
 
-					// Get the description between the tags <object></object>:
+/*					// $3 is the description between the tags <object></object>:
 					let d = />([^<]*)<\/object>$/i.exec($2);    	// the description is in d[1]
 					if( d && d[1].length ) d = withoutPath( d[1] )	// if there is a description, use it
 					else d = withoutPath( u1 );						// use the target name, otherwise
+*/					let d = withoutPath( $3 || u1 );
 						
 //					let hasImg = true;
 					e = e.toLowerCase();
 	//				console.debug( $0, $1, 'url: ', u1, 'ext: ', e );
 						
+					let png = itemById( specifData.files, fileName(u1)+'.png' );
 					if( opts.imgExtensions.indexOf( e )>-1 ) {  
 						// it is an image, show it:
-						d = '<img src="'+addEpubPath(u1)+'" alt="'+d+'" style="max-width:100%" />';
-//						d = '<object data="'+addEpubPath(u1)+'"'+t1+s1+' />';
-						pushReferencedFiles( u1, t1 )
+
+						// if the type is svg, png is preferred and available, replace it:
+						if( t1.indexOf('svg')>-1 && opts.preferPng && png ) {
+							u1 = png.id.replace('\\','/');
+							t1 = png.mimeType
+						};
+						pushReferencedFiles( u1, t1 );
+						d = '<img src="'+addEpubPath(u1)+'" style="max-width:100%" alt="'+d+'" />'
+//						d = '<object data="'+addEpubPath(u1)+'"'+t1+s1+' >'+d+'</object>
 					} else {
-						if( e=='ole' ) {  
+						if( e=='ole' && png ) {  
 							// It is an ole-file, so add a preview image;
-							// in case there is no preview image, the browser will display d holding the description
-							// ToDo: Check if there *is* a preview image and which type it has, use an <img> tag.
-							pushReferencedFiles( fileName(u1)+'.png', 'image/png' );
+							u1 = png.id.replace('\\','/');
+							t1 = png.mimeType;
+							pushReferencedFiles( u1, t1 );
+							d = '<img src="'+addEpubPath(u1)+'" style="max-width:100%" alt="'+d+'" />'
 //							d = '<object data="'+addEpubPath( fileName(u1) )+'.png" type="image/png" >'+d+'</object>'
-							d = '<img src="'+addEpubPath( fileName(u1) )+'.png" alt="'+d+'" style="max-width:100%" />'
 						} else {
-							// last resort is to take the filename:
+							// in absence of an image, just show the description:
 //							hasImg = false;
 							d = '<span>'+d+'</span>'  
 						}
@@ -406,13 +437,13 @@ function toXhtml( specifData, opts ) {
 //	??						if( myProject.selectedSpec.objectRefs.indexOf(cO.id)<0 ) continue;
 
 							// get the pure title text:
-							ti = titleValOf( cO, itemById( specifData.resourceClasses, cO['class'] ), opts );
+							ti = titleValOf( cO, itemById( specifData[rClasses], cO[rClass] ), opts );
 
 							// disregard objects whose title is too short:
 							if( !ti || ti.length<opts.titleLinkMinLength ) continue;
 
 							// if the titleLink content equals a resource's title, replace it with a link:
-							if(m==ti.toLowerCase()) return '<a href="#'+cO.id+'">'+$1+'</a>'
+							if(m==ti.toLowerCase()) return '<a href="'+anchorOf(cO)+'">'+$1+'</a>'
 						};
 						// The dynamic link has NOT been matched/replaced, so mark it:
 						return '<span style="color:#D82020">'+$1+'</span>'
@@ -423,12 +454,13 @@ function toXhtml( specifData, opts ) {
 		}
 		function valOf( pr ) {
 			// return the value of a single property:
-			let dT = dataTypeOf(specifData.dataTypes, rC, pr['class'] );
+//			console.debug('#',rC,pr,rClass);
+			let dT = dataTypeOf(specifData.dataTypes, rC, pr[pClass] );
 			switch( dT.type ) {
 				case 'xs:enumeration':
 					let ct = '',
 						val = null,
-						st = opts.stereotypes.indexOf(pr.title)>-1,
+						st = opts.stereotypeProperties.indexOf(pr.title)>-1,
 						vL = pr.value.split(',');  // in case of ENUMERATION, content carries comma-separated value-IDs
 					for( var v=0,V=vL.length;v<V;v++ ) {
 						val = itemById(dT.values,vL[v].trim());
@@ -437,37 +469,39 @@ function toXhtml( specifData, opts ) {
 						if( val ) ct += (v==0?'':', ')+(st?('&#x00ab;'+val.title+'&#x00bb;'):val.title)
 						else ct += (v==0?'':', ')+vL[v]
 					};
-					return ct;
+					return escapeHTML( ct );
 				case 'xhtml':
 					return titleLinks( fileRef( pr.value, opts ), opts )
-//					return fileRef( pr.value, opts )
 				case 'xs:string':
-					return titleLinks( pr.value, opts )
+					return titleLinks( escapeHTML( pr.value ), opts )
 				default:
-					return pr.value
+					return escapeHTML( pr.value )
 			}
 		}
 	}
-	function chapter( nd, lvl ) {
+	function paragraphOf( nd, lvl ) {
+		// For each of the children of specified hierarchy node 'nd', 
+		// write a paragraph for the referenced resource:
 //		console.debug( nd, lvl )
 		if( !nd.nodes || nd.nodes.length<1 ) return '';
 		let i=null, I=null, r=null, rC=null,
 			params={
-				level: lvl,
-				nodeId: nd.id
+				level: lvl
 			};
 		var ch = '';
 		for( i=0,I=nd.nodes.length; i<I; i++ ) {
 			r = itemById( specifData.resources,nd.nodes[i].resource );
-			rC = itemById( specifData.resourceClasses, r['class'] );
+			rC = itemById( specifData[rClasses], r[rClass] );
+			params.nodeId = nd.nodes[i].id;
 			ch += 	titleOf( r, rC, params, opts )
 				+	propertiesOf( r, rC, opts )
 				+	statementsOf( r, opts )
-				+	chapter( nd.nodes[i], lvl+1 )
+				+	paragraphOf( nd.nodes[i], lvl+1 )
 		};
 		return ch
 	}
 	function xhtmlOf( headTitle, sectId, sectTitle, body ) {
+		// make a xhtml file from the content provided:
 		return	'<?xml version="1.0" encoding="UTF-8"?>'
 		+		'<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">'
 		+		'<html xmlns="http://www.w3.org/1999/xhtml">'
@@ -480,5 +514,34 @@ function toXhtml( specifData, opts ) {
 		+				body
 		+			'</body>'
 		+		'</html>'
+	}
+
+	function itemById(L,id) {
+		if(!L||!id) return undefined;
+		// given the ID of an element in a list, return the element itself:
+//		id = id.trim();
+		for( var i=L.length-1;i>-1;i-- )
+			if( L[i].id === id ) return L[i];   // return list item
+		return undefined
+	}
+	function indexBy( L, p, s ) {
+		if(!L||!p||!s) return -1;
+		// Return the index of an element in list 'L' whose property 'p' equals searchterm 's':
+		// hand in property and searchTerm as string !
+		for( var i=L.length-1;i>-1;i-- )
+			if (L[i][p] === s) return i;
+		return -1
+	}
+	function escapeHTML( str ) {
+		return str.replace(/["'&<>]/g, function($0) {
+			return "&" + {'"':"quot", "'":"#39", "&":"amp", "<":"lt", ">":"gt"}[$0] + ";";
+		})
+	};
+	function dataTypeOf( dTs, sT, pCid ) {
+//		console.debug( dTs, sT, pCid );
+		// given an attributeType ID, return it's dataType:
+		return itemById( dTs, itemById( sT[pClasses], pCid ).dataType )
+		//                    get propertyClass
+		//	   get dataType
 	}
 }

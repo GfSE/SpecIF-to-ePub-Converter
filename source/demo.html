@@ -21,7 +21,9 @@
 	// the DOM is available now.
 	var specif = specifData(),
 		options = { 
-			filePath: 'https://se.reqif.net/reqif/v0.92/projects/'+specif.id+'/rev/0/files/',
+			filePath: 'https://se.reqif.net/reqif/v0.92/projects/'+specif.id+'/rev/0/files',
+			// If a hidden property is defined with value, it is suppressed only if it has this value;
+			// if the value is undefined, the property is suppressed in all cases.
 			hiddenProperties: [{title:'SpecIF:Type',value:'SpecIF:Folder'},{title:'SpecIF:Type',value:'Folder'}],
 			hideEmptyProperties: true,
 			propertiesLabel: 'Properties:',

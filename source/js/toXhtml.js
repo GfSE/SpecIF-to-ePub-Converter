@@ -15,8 +15,9 @@ function toXhtml( specifData, opts ) {
 	// if the value is undefined, the property is suppressed in all cases.
 	if( !opts.hiddenProperties ) opts.hiddenProperties = [];
 	if( !opts.stereotypeProperties ) opts.stereotypeProperties = ['SpecIF:Stereotype'];	
-	if( !opts.propertiesLabel ) opts.propertiesLabel = ['Properties'];	
-	if( !opts.statementsLabel ) opts.statementsLabel = ['Statements'];	
+	// If no lable is provided, the respective properties are skipped:
+	if( !opts.propertiesLabel ) opts.propertiesLabel = 'Properties';	
+	if( !opts.statementsLabel ) opts.statementsLabel = 'Statements';	
 	if( !opts.titleLinkBegin ) opts.titleLinkBegin = '\\[\\[';		// must escape javascript AND RegExp
 	if( !opts.titleLinkEnd ) opts.titleLinkEnd = '\\]\\]';			// must escape javascript AND RegExp
 	if( opts.titleLinkMinLength==undefined ) opts.titleLinkMinLength = 3;	
@@ -102,7 +103,7 @@ function toXhtml( specifData, opts ) {
 		// ... or take the resource's title, if there is no title property:
 		return r.title
 	}
-	function titleOf( r, rC, pars, opts ) {
+	function titleOf( r, rC, pars, opts ) { // resource, resourceClass, parameters, options
 		let ic = rC.icon;
 		if( ic==undefined ) ic = '';
 		if( ic ) ic += '&#160;'; // non-breakable space
@@ -243,6 +244,7 @@ function toXhtml( specifData, opts ) {
 
 		// ---------------
 		function isEmpty( str ) {
+			// checks whether str has content or a file reference:
 			return str.replace(/<[^>]+>/g, '').trim().length<1	// strip HTML and trim
 				&& !/<object[^>]+(\/>|>[\s\S]*?<\/object>)/.test(str)
 				&& !/<img[^>]+(\/>|>[\s\S]*?<\/img>)/.test(str)

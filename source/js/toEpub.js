@@ -23,7 +23,7 @@ function toEpub( specifData, opts ) {
 			opts.filePath+'.json', 
 			'arraybuffer',
 			function(xhr) { 
-				// save the result in opts.availableFiles:
+				// list the supplied files:
 				specifData.files = [];
 				let files = JSON.parse( buf2str(xhr.response) ).files;
 				files.forEach( function(f) { 
@@ -31,15 +31,15 @@ function toEpub( specifData, opts ) {
 									id: 		f.url,
 									mimeType: 	f.mimeType
 								}) 
-							});
-				createEpub()
+							})
 			}, 
-			null 
+			function(xhr) { 
+				// no files supplied:
+				specifData.files = []
+			}, 
 		);
-	else
-		// files are already listed, so we can start right away:
-		createEpub();
-
+		
+	createEpub();
 	return
 	
 	// -----------------------

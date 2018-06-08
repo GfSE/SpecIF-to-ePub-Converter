@@ -370,30 +370,34 @@ function toXhtml( specifData, opts ) {
 	//				console.debug( $0, $1, 'url: ', u1, 'ext: ', e );
 						
 					let png = itemById( specifData.files, fileName(u1)+'.png' );
-					if( opts.imgExtensions.indexOf( e )>-1 ) {  
-						// it is an image, show it:
+					if( png ) {
+						if( opts.imgExtensions.indexOf( e )>-1 ) {  
+							// it is an image, show it:
 
-						// if the type is svg, png is preferred and available, replace it:
-						if( t1.indexOf('svg')>-1 && opts.preferPng && png ) {
-							u1 = png.id.replace('\\','/');
-							t1 = png.mimeType
-						};
-						pushReferencedFiles( u1, t1 );
-						d = '<img src="'+addEpubPath(u1)+'" style="max-width:100%" alt="'+d+'" />'
-//						d = '<object data="'+addEpubPath(u1)+'"'+t1+s1+' >'+d+'</object>
-					} else {
-						if( e=='ole' && png ) {  
-							// It is an ole-file, so add a preview image;
-							u1 = png.id.replace('\\','/');
-							t1 = png.mimeType;
+							// if the type is svg, png is preferred and available, replace it:
+							if( t1.indexOf('svg')>-1 && opts.preferPng && png ) {
+								u1 = png.id.replace('\\','/');
+								t1 = png.mimeType
+							};
 							pushReferencedFiles( u1, t1 );
 							d = '<img src="'+addEpubPath(u1)+'" style="max-width:100%" alt="'+d+'" />'
-//							d = '<object data="'+addEpubPath( fileName(u1) )+'.png" type="image/png" >'+d+'</object>'
+	//						d = '<object data="'+addEpubPath(u1)+'"'+t1+s1+' >'+d+'</object>
 						} else {
-							// in absence of an image, just show the description:
-//							hasImg = false;
-							d = '<span>'+d+'</span>'  
+							if( e=='ole' && png ) {  
+								// It is an ole-file, so add a preview image;
+								u1 = png.id.replace('\\','/');
+								t1 = png.mimeType;
+								pushReferencedFiles( u1, t1 );
+								d = '<img src="'+addEpubPath(u1)+'" style="max-width:100%" alt="'+d+'" />'
+	//							d = '<object data="'+addEpubPath( fileName(u1) )+'.png" type="image/png" >'+d+'</object>'
+							} else {
+								// in absence of an image, just show the description:
+	//							hasImg = false;
+								d = '<span>'+d+'</span>'  
+							}
 						}
+					} else {
+						d = '<span>'+d+'</span>'
 					};
 						
 //					if( hasImg )

@@ -38,7 +38,7 @@ function toEpub( specifData, opts ) {
 				// no files supplied:
 				specifData.files = [];
 				createEpub()
-			}, 
+			}
 		)
 	else
 		// files are already listed, so we can start right away:
@@ -191,8 +191,13 @@ function toEpub( specifData, opts ) {
 				zip.generateAsync({
 						type: "blob"
 					})
-					.then(function(blob) {
-						saveAs(blob, ePub.fileName+".epub")
+					.then(
+						function(blob) {
+							saveAs(blob, ePub.fileName+".epub");
+							if( typeof opts.done=="function" ) opts.done()
+					}, 
+						function(xhr) {
+							if( typeof opts.fail=="function" ) opts.fail(xhr)
 					})
 			};
 			return 

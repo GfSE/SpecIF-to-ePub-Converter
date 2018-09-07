@@ -164,30 +164,6 @@ function toEpub( specifData, opts ) {
 		return
 
 		// ---------------
-		function next() {
-			if( i>0 ) {
-				// download next image:
-				get( addFilePath(ePub.images[--i].id), 'blob', save, next )
-			} else {
-				// done, store the specifz:
-				zip.generateAsync({
-						type: "blob"
-					})
-					.then(
-						function(blob) {
-							saveAs(blob, ePub.fileName+".epub");
-							if( typeof opts.done=="function" ) opts.done()
-					}, 
-						function(xhr) {
-							if( typeof opts.fail=="function" ) opts.fail(xhr)
-					})
-			}
-		}
-		function save(rspO) {
-			// gets here only, if the file has been received successfully:
-			let name = rspO.responseURL.replace('\\','/').split("/");
-			zip.file( 'OEBPS/Images/'+name[name.length-1], rspO.response )
-		}
 		function itemById(L,id) {
 			if(!L||!id) return null;
 			// given the ID of an element in a list, return the element itself:

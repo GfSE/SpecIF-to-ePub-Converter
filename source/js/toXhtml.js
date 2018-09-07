@@ -256,7 +256,8 @@ function toXhtml( specifData, opts ) {
 	//		if( opts.clickableElements==undefined ) opts.clickableElements = false;
 			
 				function addEpubPath( u ) {
-					return opts.epubImgPath+withoutPath( u )
+					return opts.epubImgPath+u
+//					return opts.epubImgPath+withoutPath( u )
 				}
 				function getType( str ) {
 					var t = /type="([^"]+)"/.exec( str );
@@ -334,10 +335,11 @@ function toXhtml( specifData, opts ) {
 					// if the type is svg, png is preferred and available, replace it:
 					let png = itemById( specifData.files, fileName(u2)+'.png' );
 					if( t2.indexOf('svg')>-1 && opts.preferPng && png ) {
-						u2 = png.id.replace('\\','/');
+						u2 = png.id;
 						t2 = png.mimeType
 					} 
 					
+					u2 = u2.replace('\\','/');
 					pushReferencedFiles( u2, t2 );
 	//				console.debug( $0, $4, u1, t1, u2, t2 );
 					return'<img src="'+addEpubPath(u2)+'" style="max-width:100%" alt="'+$4+'" />'
@@ -375,9 +377,10 @@ function toXhtml( specifData, opts ) {
 
 						// if the type is svg, png is preferred and available, replace it:
 						if( t1.indexOf('svg')>-1 && opts.preferPng && png ) {
-							u1 = png.id.replace('\\','/');
+							u1 = png.id;
 							t1 = png.mimeType
 						};
+						u1 = u1.replace('\\','/');
 						pushReferencedFiles( u1, t1 );
 						d = '<img src="'+addEpubPath(u1)+'" style="max-width:100%" alt="'+d+'" />'
 //						d = '<object data="'+addEpubPath(u1)+'"'+t1+s1+' >'+d+'</object>

@@ -54,7 +54,7 @@ var specif = {
 			return cDO
 		},
 		put: function(data) {
-			console.debug('specif.put',data)
+//			console.debug('specif.put',data)
 			// no transformation needed in this context
 			return data
 		}
@@ -63,7 +63,7 @@ var specif = {
 var myProject = {
 		value: null,
 		create: function( data ) {
-			console.debug('myProject.create',data);
+//			console.debug('myProject.create',data);
 			var dO = $.Deferred();
 			this.value = data;
 			dO.resolve(null,'',{status:201});
@@ -134,17 +134,6 @@ var app = {
 		};
 		xhr.send(null)
 	}
-	String.prototype.fileExt = function() {
-		let s = this.split('.');
-		if( s.length<2 ) return null;
-		return s[s.length-1]
-	};
-	String.prototype.trimJSON = function() {
-		// trim all characters outside the outer curly brackets, which may include the UTF-8 byte-order-mask: 
-		let si = this.indexOf('{'),
-			li = this.lastIndexOf('}');
-		return this.substring(si,li+1)
-	};
 	function buf2str(buf) {
 		// UTF-8 character table: http://www.i18nqa.com/debug/utf8-debug.html
 		// or: https://bueltge.de/wp-content/download/wk/utf-8_kodierungen.pdf
@@ -162,6 +151,17 @@ var app = {
 			return String.fromCharCode.apply(null, new Uint8Array(buf))
 		}
 	}
+	String.prototype.fileExt = function() {
+		let s = this.split('.');
+		if( s.length<2 ) return null;
+		return s[s.length-1]
+	};
+	String.prototype.trimJSON = function() {
+		// trim all characters outside the outer curly brackets, which may include the UTF-8 byte-order-mask: 
+		let si = this.indexOf('{'),
+			li = this.lastIndexOf('}');
+		return this.substring(si,li+1)
+	};
 </script>
 <div id="main">
 	<h1>SpecIF to ePub</h1>

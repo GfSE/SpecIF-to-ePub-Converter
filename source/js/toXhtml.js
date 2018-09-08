@@ -5,6 +5,10 @@ function toXhtml( specifData, opts ) {
 	// - HTML ids are made from resource ids, so multiple reference of a resource results in mutiple occurrences of the same id.
 	// - Title links are only correct if they reference objects in the same SpecIF hierarchy (hence, the same xhtml file)
 
+	// Make a very simple hash code from a string:
+	// http://werxltd.com/wp/2010/05/13/javascript-implementation-of-javas-string-hashcode-method/
+	String.prototype.hashCode = function(){for(var r=0,i=0;i<this.length;i++)r=(r<<5)-r+this.charCodeAt(i),r&=r;return r};
+
 	// Check for missing options:
 //	if( !opts ) return;
 	if( !opts ) opts = {};
@@ -26,6 +30,12 @@ function toXhtml( specifData, opts ) {
 		opts.RETitleLink = new RegExp( opts.titleLinkBegin+'(.+?)'+opts.titleLinkEnd, 'g' );
 	
 	switch( specifData.specifVersion ) {
+		case '0.10.0':
+		case '0.10.1':
+//			return { result: null, status: 903, statusText: 'SpecIF version '+specifData.specifVersion+' is not any more supported!' };
+			console.error('SpecIF version '+specifData.specifVersion+' is not any more supported!');
+			return null;
+		case '0.10.2':
 		case '0.10.3':
 			var rClasses = 'resourceTypes',
 				sClasses = 'statementTypes',
@@ -41,7 +51,11 @@ function toXhtml( specifData, opts ) {
 				rClass = 'class';
 				sClass = 'class'
 				pClass = 'class';
-			break
+			break;
+		default:
+//			return { result: null, status: 904, statusText: 'SpecIF version '+specifData.specifVersion+' is not (yet) supported!' };
+			console.error('SpecIF version '+specifData.specifVersion+' is not (yet) supported!');
+			return null;
 	};
 	
 	// All required parameters are available, so we can begin.
@@ -76,6 +90,7 @@ function toXhtml( specifData, opts ) {
 	};
 
 //	console.debug('xhtml',xhtml);
+//	return { result: xhtml, status: 200, statusText: 'OK!' };
 	return xhtml
 	
 	// ---------------
@@ -288,12 +303,12 @@ function toXhtml( specifData, opts ) {
 					str = str.replace('\\','/');
 					return str.substring( 0, str.lastIndexOf('.') )
 				}
-				function pushReferencedFiles( u, t ) {
+				function pushReferencedFiles( i, u, t ) {
 					// avoid duplicate entries:
-					if( indexBy( xhtml.images, 'id', u )<0 ) {
+					if( indexBy( xhtml.images, 'id', i )<0 ) {
 						xhtml.images.push({
-							id: u,					// is the distinguishing/relative part of the URL
-							title: withoutPath(u),
+							id: i,					
+							title: u.replace('\\','/'),  // is the distinguishing/relative part of the URL
 							mimeType: t
 						})
 					}
@@ -337,12 +352,16 @@ function toXhtml( specifData, opts ) {
 					if( t2.indexOf('svg')>-1 && opts.preferPng && png ) {
 						u2 = png.id;
 						t2 = png.mimeType
-					} 
+					}; 
 					
-					u2 = u2.replace('\\','/');
-					pushReferencedFiles( u2, t2 );
-	//				console.debug( $0, $4, u1, t1, u2, t2 );
-					return'<img src="'+addEpubPath(u2)+'" style="max-width:100%" alt="'+$4+'" />'
+					// ToDo: Check whether the referenced file is available.
+					
+					// unfortunately some (or even most) ePub-Readers do not support subfolders for images.
+					// So we need to generate a GUID and to store all files in a single folder.
+					let i2 = u2.hashCode()+'.'+u2.fileExt();
+					pushReferencedFiles( i2, u2, t2 );
+	//				console.debug( $0, $4, u1, t1, i2, u2, t2 );
+					return'<img src="'+addEpubPath(i2)+'" style="max-width:100%" alt="'+$4+'" />'
 //					return'<div class="forImage"><object data="'+addEpubPath(u2)+'"'+t2+s2+' >'+$4+'</object></div>'
 				}
 			);
@@ -361,11 +380,8 @@ function toXhtml( specifData, opts ) {
 					let e = fileExt(u1);
 					if( !e ) return $0
 
-/*					// $3 is the description between the tags <object></object>:
-					let d = />([^<]*)<\/object>$/i.exec($2);    	// the description is in d[1]
-					if( d && d[1].length ) d = withoutPath( d[1] )	// if there is a description, use it
-					else d = withoutPath( u1 );						// use the target name, otherwise
-*/					let d = withoutPath( $3 || u1 );
+					// $3 is the description between the tags <object></object>:
+					let d = withoutPath( $3 || u1 );
 						
 //					let hasImg = true;
 					e = e.toLowerCase();
@@ -380,17 +396,18 @@ function toXhtml( specifData, opts ) {
 							u1 = png.id;
 							t1 = png.mimeType
 						};
-						u1 = u1.replace('\\','/');
-						pushReferencedFiles( u1, t1 );
-						d = '<img src="'+addEpubPath(u1)+'" style="max-width:100%" alt="'+d+'" />'
+						let i1 = u1.hashCode()+'.'+u1.fileExt();
+						pushReferencedFiles( i1, u1, t1 );
+						d = '<img src="'+addEpubPath(i1)+'" style="max-width:100%" alt="'+d+'" />'
 //						d = '<object data="'+addEpubPath(u1)+'"'+t1+s1+' >'+d+'</object>
 					} else {
 						if( e=='ole' && png ) {  
 							// It is an ole-file, so add a preview image;
-							u1 = png.id.replace('\\','/');
+							u1 = png.id;
 							t1 = png.mimeType;
-							pushReferencedFiles( u1, t1 );
-							d = '<img src="'+addEpubPath(u1)+'" style="max-width:100%" alt="'+d+'" />'
+							let i1 = u1.hashCode()+'.'+u1.fileExt();
+							pushReferencedFiles( i1, u1, t1 );
+							d = '<img src="'+addEpubPath(i1)+'" style="max-width:100%" alt="'+d+'" />'
 //							d = '<object data="'+addEpubPath( fileName(u1) )+'.png" type="image/png" >'+d+'</object>'
 						} else {
 							// in absence of an image, just show the description:
@@ -541,7 +558,7 @@ function toXhtml( specifData, opts ) {
 		return str.replace(/["'&<>]/g, function($0) {
 			return "&" + {'"':"quot", "'":"#39", "&":"amp", "<":"lt", ">":"gt"}[$0] + ";";
 		})
-	};
+	}
 	function dataTypeOf( dTs, sT, pCid ) {
 //		console.debug( dTs, sT, pCid );
 		// given an attributeType ID, return it's dataType:

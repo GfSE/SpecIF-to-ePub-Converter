@@ -70,7 +70,7 @@ function toEpub( specifData, opts ) {
 		ePub.content += '<item id="sect'+i+'" href="Text/sect'+i+'.xhtml" media-type="application/xhtml+xml" />'
 	};
 	for( i=0,I=ePub.images.length; i<I; i++ ) {
-		ePub.content += '<item id="img'+i+'" href="Images/'+ePub.images[i].title+'" media-type="'+ePub.images[i].mimeType+'"/>'
+		ePub.content += '<item id="img'+i+'" href="Images/'+ePub.images[i].id+'" media-type="'+ePub.images[i].mimeType+'"/>'
 	};
 
 	ePub.content += '</manifest>'
@@ -141,9 +141,9 @@ function toEpub( specifData, opts ) {
 		console.debug('files',ePub.images,specifData.files);
 		// Add the images:
 		for( i=0,I=ePub.images.length; i<I; i++ ) {
-			let img = itemById(specifData.files, ePub.images[i].id);
+			let img = itemById(specifData.files, ePub.images[i].title);
 			if( img && img.id && img.buffer )
-				zip.file( "OEBPS/Images/"+img.id, img.buffer )
+				zip.file( "OEBPS/Images/"+ePub.images[i].id, img.buffer )
 			else
 				console.info('No image file found for ',ePub.images[i].id)
 		};

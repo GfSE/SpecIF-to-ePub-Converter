@@ -5,10 +5,6 @@ function toXhtml( specifData, opts ) {
 	// - HTML ids are made from resource ids, so multiple reference of a resource results in mutiple occurrences of the same id.
 	// - Title links are only correct if they reference objects in the same SpecIF hierarchy (hence, the same xhtml file)
 
-	// Make a very simple hash code from a string:
-	// http://werxltd.com/wp/2010/05/13/javascript-implementation-of-javas-string-hashcode-method/
-	String.prototype.hashCode = function(){for(var r=0,i=0;i<this.length;i++)r=(r<<5)-r+this.charCodeAt(i),r&=r;return r};
-
 	// Check for missing options:
 //	if( !opts ) return;
 	if( !opts ) opts = {};
@@ -296,9 +292,6 @@ function toXhtml( specifData, opts ) {
 					str = str.replace('\\','/');
 					return str.substring(str.lastIndexOf('/')+1)
 				}
-				function fileExt( str ) {
-					return str.substring( str.lastIndexOf('.')+1 )
-				}
 				function fileName( str ) {
 					str = str.replace('\\','/');
 					return str.substring( 0, str.lastIndexOf('.') )
@@ -358,7 +351,7 @@ function toXhtml( specifData, opts ) {
 					
 					// unfortunately some (or even most) ePub-Readers do not support subfolders for images.
 					// So we need to generate a GUID and to store all files in a single folder.
-					let i2 = u2.hashCode()+'.'+u2.fileExt();
+					let i2 = hashCode(u2)+'.'+extOf(u2);
 					pushReferencedFiles( i2, u2, t2 );
 	//				console.debug( $0, $4, u1, t1, i2, u2, t2 );
 					return'<img src="'+addEpubPath(i2)+'" style="max-width:100%" alt="'+$4+'" />'
@@ -377,7 +370,7 @@ function toXhtml( specifData, opts ) {
 						t1 = getType( $1 );
 
 					// get the file extension:
-					let e = fileExt(u1);
+					let e = extOf(u1);
 					if( !e ) return $0
 
 					// $3 is the description between the tags <object></object>:
@@ -396,7 +389,7 @@ function toXhtml( specifData, opts ) {
 							u1 = png.id;
 							t1 = png.mimeType
 						};
-						let i1 = u1.hashCode()+'.'+u1.fileExt();
+						let i1 = hashCode(u1)+'.'+extOf(u1);
 						pushReferencedFiles( i1, u1, t1 );
 						d = '<img src="'+addEpubPath(i1)+'" style="max-width:100%" alt="'+d+'" />'
 //						d = '<object data="'+addEpubPath(u1)+'"'+t1+s1+' >'+d+'</object>
@@ -405,7 +398,7 @@ function toXhtml( specifData, opts ) {
 							// It is an ole-file, so add a preview image;
 							u1 = png.id;
 							t1 = png.mimeType;
-							let i1 = u1.hashCode()+'.'+u1.fileExt();
+							let i1 = hashCode(u1)+'.'+extOf(u1);
 							pushReferencedFiles( i1, u1, t1 );
 							d = '<img src="'+addEpubPath(i1)+'" style="max-width:100%" alt="'+d+'" />'
 //							d = '<object data="'+addEpubPath( fileName(u1) )+'.png" type="image/png" >'+d+'</object>'
@@ -559,6 +552,9 @@ function toXhtml( specifData, opts ) {
 			return "&" + {'"':"quot", "'":"#39", "&":"amp", "<":"lt", ">":"gt"}[$0] + ";";
 		})
 	}
+	function extOf( str ) {
+		return str.substring( str.lastIndexOf('.')+1 )
+	}
 	function dataTypeOf( dTs, sT, pCid ) {
 //		console.debug( dTs, sT, pCid );
 		// given an attributeType ID, return it's dataType:
@@ -566,4 +562,7 @@ function toXhtml( specifData, opts ) {
 		//                    get propertyClass
 		//	   get dataType
 	}
+	// Make a very simple hash code from a string:
+	// http://werxltd.com/wp/2010/05/13/javascript-implementation-of-javas-string-hashcode-method/
+	function hashCode(s) {for(var r=0,i=0;i<s.length;i++)r=(r<<5)-r+s.charCodeAt(i),r&=r;return r}
 }

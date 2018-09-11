@@ -74,13 +74,16 @@ var myProject = {
 			this.value = data;
 			dO.resolve(null,'',{status:201});
 			return dO
+		},
+		abort: function() {
+			// not implemented
 		}
 	};
-// the demo app
+// the demo app:
 var app = {
 	main: function( file ) {
 			function readFile( f, fn ) {
-				console.debug( 'readFile ' + f.name );
+//				console.debug( 'readFile ' + f.name );
 				var rdr = new FileReader();
 				rdr.onload = function(evt) {
 					fn( evt.target.result )		// import the file
@@ -158,6 +161,7 @@ var app = {
 		}
 	}
 	String.prototype.fileExt = function() {
+		// return the file extension without the dot:
 		return this.substring( this.lastIndexOf('.')+1 )
 	};
 	String.prototype.trimJSON = function() {

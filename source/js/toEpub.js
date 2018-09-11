@@ -15,7 +15,7 @@ function toEpub( specifData, opts ) {
 //	if( !opts.linkFontColor ) opts.linkFontColor = '#005A92';	// darker
 	if( opts.linkNotUnderlined==undefined ) opts.linkNotUnderlined = false;
 	if( opts.preferPng==undefined ) opts.preferPng = true;
-	opts.epubImgPath = '../Images/';
+	opts.epubImgPath = 'Images/';
 		
 	// All required parameters are available, so we can begin:
 	let i=null, I=null,
@@ -70,7 +70,7 @@ function toEpub( specifData, opts ) {
 		ePub.content += '<item id="sect'+i+'" href="Text/sect'+i+'.xhtml" media-type="application/xhtml+xml" />'
 	};
 	for( i=0,I=ePub.images.length; i<I; i++ ) {
-		ePub.content += '<item id="img'+i+'" href="Images/'+ePub.images[i].id+'" media-type="'+ePub.images[i].mimeType+'"/>'
+		ePub.content += '<item id="img'+i+'" href="'+opts.epubImgPath+ePub.images[i].id+'" media-type="'+ePub.images[i].mimeType+'"/>'
 	};
 
 	ePub.content += '</manifest>'
@@ -121,6 +121,8 @@ function toEpub( specifData, opts ) {
 	function storeEpub( ePub ) {
 		let zip = new JSZip(),
 			i=null, I=null;
+			
+		console.debug('storeEpub',ePub);
 		zip.file( "mimetype", ePub.mimetype );
 		zip.file( "META-INF/container.xml", ePub.container );
 		zip.file( "OEBPS/content.opf", ePub.content );
@@ -138,29 +140,31 @@ function toEpub( specifData, opts ) {
 			zip.file( "OEBPS/Text/sect"+i+".xhtml", ePub.sections[i] )
 		};
 
-		console.debug('files',ePub.images,specifData.files);
+//		console.debug('files',ePub.images,specifData.files);
 		// Add the images:
 		for( i=0,I=ePub.images.length; i<I; i++ ) {
 			let img = itemById(specifData.files, ePub.images[i].title);
-			if( img && img.id && img.buffer )
-				zip.file( "OEBPS/Images/"+ePub.images[i].id, img.buffer )
+//			if( img && img.id && img.buffer )
+//				zip.file( "OEBPS/"+opts.epubImgPath+ePub.images[i].id, img.buffer )
+			if( img && img.id && img.blob )
+				zip.file( "OEBPS/"+opts.epubImgPath+ePub.images[i].id, img.blob )
 			else
 				console.info('No image file found for ',ePub.images[i].id)
 		};
-		// done, store the specifz:
+		// done, store the ePub file in a zip container:
 		zip.generateAsync({
 				type: "blob"
 			})
 			.then(
 				function(blob) {
-					console.debug('storing ',ePub.fileName+".epub");
+//					console.debug('storing ',ePub.fileName+".epub");
 					saveAs(blob, ePub.fileName+".epub");
 					if( typeof opts.done=="function" ) opts.done()
 			}, 
 				function(xhr) {
 					console.debug('cannot store ',ePub.fileName+".epub");
 					if( typeof opts.fail=="function" ) opts.fail(xhr)
-			})
+			});
 		return
 
 		// ---------------

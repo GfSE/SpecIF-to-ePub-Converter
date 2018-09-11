@@ -1,7 +1,8 @@
 /*	ReqIF Server: SpecIF import 
-	Dependencies: jQuery, specif-check-*.js
-	(C)copyright 2010-2017 enso managers gmbh (http://www.enso-managers.com)
-	Author: se@enso-managers.com, Berlin
+	Dependencies: jQuery, Bootstrap 3, BootstrapDialog
+	License: Apache 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+	(C)copyright 2010-2018 enso managers gmbh (http://www.enso-managers.de)
+	Author: se@enso-managers.de, Berlin
 	We appreciate any correction, comment or contribution via e-mail to support@reqif.de            
 */
 
@@ -106,7 +107,7 @@ function ImportSpecif() {
 										.fail( jDO.reject );
 									break;
 								case 'update':
-									// First, load the project with the types for comparison:
+									// First, load the project for comparison:
 									jDO.notify('Updating project',20); 
 									myProject.read({id:data.id}, {reload:true})	// reload from server
 										.done( function(refD) {
@@ -147,16 +148,12 @@ function ImportSpecif() {
 				var fileList = zip.filter(function (relPath, file) {return file.name.endsWith('.specif')}),
 					data = {};
 
-				// The file may have a UTF-8 BOM, but unfortunately neiter of the following methods work, no idea why:
-				//   .replace( /\x7b[\s\S]*\x7d/, function($0) {return $0} )
-				//   .replace( /{[\s\S]*}/, function($0) {return $0} )
-				//   .replace( /^(\xEF\xBB\xBF)?({[\s\S]*})/, function($0,$1,$2) {return $2} )
-
 				// take the first specif file found, ignore any other so far:
 				zip.file( fileList[0].name ).async("string")
 				.then( function(dta) {
 					// Check if data is valid JSON:
 					try {
+						// The file may have a UTF-8 BOM:
 						dta = JSON.parse( dta.trimJSON() );
 						specif.check( dta )
 						.progress( zDO.notify )
@@ -172,14 +169,15 @@ function ImportSpecif() {
 												if( !x ) return false;
 												x = x.toLowerCase();
 												// only certain file types are permissible:
-		//										return ( permissibleFileExtensions().indexOf( x )>-1 )
 												// extension must be contained in either one of the lists:
 												return ( CONFIG.imgExtensions.indexOf( x )>-1 || CONFIG.officeExtensions.indexOf( x )>-1 )
 											});
 							let pend = fileList.length;
-							fileList.forEach( function(e) { zip.file(e.name).async("arraybuffer")
+//							fileList.forEach( function(e) { zip.file(e.name).async("arraybuffer")
+							fileList.forEach( function(e) { zip.file(e.name).async("blob")
 												.then( function(f) {
-													data.files.push({buffer:f, id:e.name});
+//													data.files.push({buffer:f, id:e.name});
+													data.files.push({blob:f, id:e.name});
 //													console.debug('file',pend,data.files);
 													if(--pend<1)
 														// now all files are extracted from the ZIP, so we can import:
@@ -199,7 +197,6 @@ function ImportSpecif() {
 			});
 		} else {
 			// Selected file is not zipped - it is expected to be SpecIF data in JSON format.
-
 			// Check if data is valid JSON:
 			try {
 				// Cut-off UTF-8 byte-order-mask ( 3 bytes xEF xBB xBF ) at the beginning of the file, if present.

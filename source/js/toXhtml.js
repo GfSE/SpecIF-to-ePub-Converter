@@ -6,7 +6,6 @@ function toXhtml( specifData, opts ) {
 	// - Title links are only correct if they reference objects in the same SpecIF hierarchy (hence, the same xhtml file)
 
 	// Check for missing options:
-//	if( !opts ) return;
 	if( !opts ) opts = {};
 	if( !opts.headingProperties ) opts.headingProperties = ['SpecIF:Heading','ReqIF.ChapterName','Heading','Überschrift'];
 	if( !opts.titleProperties ) opts.titleProperties = ['dcterms:title','DC.title','ReqIF.Name','Title','Titel'];
@@ -18,13 +17,14 @@ function toXhtml( specifData, opts ) {
 	// If no lable is provided, the respective properties are skipped:
 	if( !opts.propertiesLabel ) opts.propertiesLabel = 'Properties';	
 	if( !opts.statementsLabel ) opts.statementsLabel = 'Statements';	
-	if( !opts.titleLinkBegin ) opts.titleLinkBegin = '\\[\\[';		// must escape javascript AND RegExp
-	if( !opts.titleLinkEnd ) opts.titleLinkEnd = '\\]\\]';			// must escape javascript AND RegExp
+	if( !opts.titleLinkBegin ) opts.titleLinkBegin = '\\[\\[';		// must escape javascript AND RegEx
+	if( !opts.titleLinkEnd ) opts.titleLinkEnd = '\\]\\]';			// must escape javascript AND RegEx
 	if( opts.titleLinkMinLength==undefined ) opts.titleLinkMinLength = 3;	
 	opts.addTitleLinks = opts.titleLinkBegin && opts.titleLinkEnd && opts.titleLinkMinLength>0;
 	if( opts.titleLinkBegin && opts.titleLinkEnd )
 		opts.RETitleLink = new RegExp( opts.titleLinkBegin+'(.+?)'+opts.titleLinkEnd, 'g' );
-	
+
+	// set certain SpecIF element names according to the SpecIF version:
 	switch( specifData.specifVersion ) {
 		case '0.10.0':
 		case '0.10.1':
@@ -71,7 +71,7 @@ function toXhtml( specifData, opts ) {
 		)
 	);
 	
-	// For each SpecIF hierarchy a xhtml-file is created and returned as subsequent sections:
+	// For each SpecIF hierarchy a xhtml-file is created and added as subsequent sections:
 	let firstHierarchySection = xhtml.sections.length;  // index of the next section number
 	for( var h=0,H=specifData.hierarchies.length; h<H; h++ ) {
 		pushHeading( specifData.hierarchies[h].title, {nodeId: specifData.hierarchies[h].id, level: 1} );
@@ -80,7 +80,7 @@ function toXhtml( specifData, opts ) {
 				specifData.title,
 				specifData.hierarchies[h].id,
 				specifData.hierarchies[h].title,
-				paragraphOf( specifData.hierarchies[h], 1 )
+				renderChildrenOf( specifData.hierarchies[h], 1 )
 			)
 		)
 	};
@@ -115,6 +115,7 @@ function toXhtml( specifData, opts ) {
 		return r.title
 	}
 	function titleOf( r, rC, pars, opts ) { // resource, resourceClass, parameters, options
+		// render the resource title
 		let ic = rC.icon;
 		if( ic==undefined ) ic = '';
 		if( ic ) ic += '&#160;'; // non-breakable space
@@ -124,7 +125,8 @@ function toXhtml( specifData, opts ) {
 		let h = rC.isHeading?2:3;
 		return '<h'+h+' id="'+pars.nodeId+'">'+(ti?ic+ti:'')+'</h'+h+'>'
 	}
-	function statementsOf( r, opts ) {
+	function statementsOf( r, opts ) { // resource, options
+		// render the statements (relations) for the resource in a table
 		if( !opts.statementsLabel ) return '';
 		let i, I, sts={}, st, cl, cid, oid, sid, ct='', r2, noSts=true;
 		// Collect statements by type:
@@ -171,8 +173,8 @@ function toXhtml( specifData, opts ) {
 				ct += '<tr><td>';
 				for( i=0, I=sts[cid].subjects.length; i<I; i++ ) {
 					r2 = sts[cid].subjects[i];
-	//				console.debug('r2',r2,itemById( specifData[rClasses], r2[rClass]))
-					ct += '<a href="'+anchorOf( r2 )+'">'+titleOf( r2, itemById( specifData[rClasses], r2[rClass]), null, opts )+'</a><br/>'
+//					console.debug('r2',r2,itemById( specifData[rClasses], r2[rClass]))
+					ct += '<a href="'+anchorOf( r2, h )+'">'+titleOf( r2, itemById( specifData[rClasses], r2[rClass]), null, opts )+'</a><br/>'
 				};
 				ct += '</td><td class="statementTitle">'+cl.title;
 				ct += '</td><td>'+titleOf( r, itemById(specifData[rClasses],r[rClass]), null, opts );
@@ -183,36 +185,36 @@ function toXhtml( specifData, opts ) {
 				ct += '</td><td class="statementTitle">'+cl.title+'</td><td>';
 				for( i=0, I=sts[cid].objects.length; i<I; i++ ) {
 					r2 = sts[cid].objects[i];
-					ct += '<a href="'+anchorOf( r2 )+'">'+titleOf( r2, itemById( specifData[rClasses], r2[rClass]), null, opts )+'</a><br/>'
+					ct += '<a href="'+anchorOf( r2, h )+'">'+titleOf( r2, itemById( specifData[rClasses], r2[rClass]), null, opts )+'</a><br/>'
 				};
 				ct += '</td></tr>'
 			}
 		};
 		return ct + '</tbody></table>'
 	}
-	function anchorOf( res ) {
+	function anchorOf( res, h ) {
 		// Find the hierarchy node id for a given resource;
 		// the first occurrence is returned:
 		let m=null, M=null, y=null, n=null, N=null, ndId=null;
 		for( m=0, M=specifData.hierarchies.length; m<M; m++ ) {
-			// for all hierarchies starting with the current one 'h':
+			// for all hierarchies starting with the current one 'h', the index of the top-level loop:
 			y = (m+h) % M;  
 	//		console.debug( 'nodes', m, y, specifData.hierarchies );
 			if( specifData.hierarchies[y].nodes )
 				for( n=0, N=specifData.hierarchies[y].nodes.length; n<N; n++ ) {
-					ndId = ndByRef( specifData.hierarchies[y].nodes[n] );
+					ndId = nodeByRef( specifData.hierarchies[y].nodes[n] );
 	//				console.debug('ndId',n,ndId);
 					if( ndId ) return ndId		// return node id
 				}
 		};
 		return null;	// not found
 		
-		function ndByRef( nd ) {
+		function nodeByRef( nd ) {
 			let ndId=null;
 			if( nd.resource==res.id ) return 'sect'+(y+firstHierarchySection)+'.xhtml#'+nd.id;  // fully qualified anchor including filename
 			if( nd.nodes )
 				for( var t=0, T=nd.nodes.length; t<T; t++ ) {
-					ndId = ndByRef( nd.nodes[t] );
+					ndId = nodeByRef( nd.nodes[t] );
 	//				console.debug('ndId2',n,ndId);
 					if( ndId ) return ndId
 				};
@@ -220,7 +222,7 @@ function toXhtml( specifData, opts ) {
 		}
 	}
 	function propertiesOf( r, rC, opts ) {
-		// return the values of all resource's properties as xhtml:
+		// render the resource's properties with title and value as xhtml:
 		if( !r.properties || r.properties.length<1 ) return '';
 		// return the content of all properties, sorted by description and other properties:
 		let a=null, A=null, c1='', c2='', hPi=null, rt=null;
@@ -267,8 +269,8 @@ function toXhtml( specifData, opts ) {
 	//		if( opts.clickableElements==undefined ) opts.clickableElements = false;
 			
 				function addEpubPath( u ) {
-					return opts.epubImgPath+u
-//					return opts.epubImgPath+withoutPath( u )
+					return '../'+opts.epubImgPath+u
+//					return '../'+opts.epubImgPath+withoutPath( u )
 				}
 				function getType( str ) {
 					var t = /type="([^"]+)"/.exec( str );
@@ -458,7 +460,7 @@ function toXhtml( specifData, opts ) {
 							if( !ti || ti.length<opts.titleLinkMinLength ) continue;
 
 							// if the titleLink content equals a resource's title, replace it with a link:
-							if(m==ti.toLowerCase()) return '<a href="'+anchorOf(cO)+'">'+$1+'</a>'
+							if(m==ti.toLowerCase()) return '<a href="'+anchorOf(cO,h)+'">'+$1+'</a>'
 						};
 						// The dynamic link has NOT been matched/replaced, so mark it:
 						return '<span style="color:#D82020">'+$1+'</span>'
@@ -494,10 +496,9 @@ function toXhtml( specifData, opts ) {
 			}
 		}
 	}
-	function paragraphOf( nd, lvl ) {
+	function renderChildrenOf( nd, lvl ) {
 		// For each of the children of specified hierarchy node 'nd', 
 		// write a paragraph for the referenced resource:
-//		console.debug( nd, lvl )
 		if( !nd.nodes || nd.nodes.length<1 ) return '';
 		let i=null, I=null, r=null, rC=null,
 			params={
@@ -511,7 +512,7 @@ function toXhtml( specifData, opts ) {
 			ch += 	titleOf( r, rC, params, opts )
 				+	propertiesOf( r, rC, opts )
 				+	statementsOf( r, opts )
-				+	paragraphOf( nd.nodes[i], lvl+1 )
+				+	renderChildrenOf( nd.nodes[i], lvl+1 )	// next level
 		};
 		return ch
 	}
@@ -531,6 +532,7 @@ function toXhtml( specifData, opts ) {
 		+		'</html>'
 	}
 
+	// ---------- helper -----------
 	function itemById(L,id) {
 		if(!L||!id) return undefined;
 		// given the ID of an element in a list, return the element itself:
@@ -553,6 +555,7 @@ function toXhtml( specifData, opts ) {
 		})
 	}
 	function extOf( str ) {
+		// get the file extension without the '.':
 		return str.substring( str.lastIndexOf('.')+1 )
 	}
 	function dataTypeOf( dTs, sT, pCid ) {

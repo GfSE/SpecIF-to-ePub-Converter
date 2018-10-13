@@ -20,10 +20,68 @@
 ////////////////////////////////////////////////////
 // This demo app imports SpecIF data from a file and uses 
 // the toEpub and toXhtml routines for transformation to ePub. 
+// Copyright: adesso AG (http://adesso.de)
+// License: Apache 2.0 (http://www.apache.org/licenses/)
 //
 
+var file = null,			// the picked import file
+	importSpecif = null;	// the import routine for SpecIF files
+
+// the demo app:
+var app = {
+	verify: function() {
+
+		// initialize:
+		importSpecif = new ImportSpecif(); 	
+		importSpecif.open();
+
+		// get the selected file:
+        file = document.getElementById("importFile").files[0];
+
+		// check if file-type is eligible:
+		file = importSpecif.verify( file ); 
+		if( file )
+			document.getElementById("startButton").disabled = false
+			// user may start the conversion
+		else
+			alert('wrong file-type')
+			// try again
+	},
+	main: function() {
+		var options = { 
+				// If a hidden property is defined with value, it is suppressed only if it has this value;
+				// if the value is undefined, the property is suppressed in all cases.
+				hiddenProperties: [{title:'SpecIF:Type',value:'SpecIF:Folder'},{title:'SpecIF:Type',value:'Folder'}],  // type is hidden in case of folder
+				hideEmptyProperties: true,
+				// if no label is provided, the respective content is suppressed:
+				propertiesLabel: 'Properties',
+				statementsLabel: 'Statements',
+				done: function() { alert("File is saved according to your browser's configuration.") },
+				fail: function(err) { alert(err.statusText) }
+			};
+		readFile( file, importSpecif.asBuf );
+		return
+
+		function readFile( f, fn ) {
+//			console.debug( 'readFile ' + f.name );
+			var rdr = new FileReader();
+			rdr.onload = function(evt) {
+				fn( evt.target.result )		// import the file as arraybuffer
+					.done( function() {
+						// process:
+						console.info('specif',myProject.value);
+						document.getElementById("startButton").disabled = true;
+						toEpub( myProject.value, options )
+					})
+					.fail( function() {alert('failure to import the data')} )
+			};
+			rdr.readAsArrayBuffer( f )
+		}
+	}
+}
+
 // used by importSpecif to check and manipulate SpecIF data:
-var specif = {
+var	specif = {
 		check: function( data ) {
 			// check the SpecIF data:
 			var cDO = $.Deferred();
@@ -58,11 +116,26 @@ var specif = {
 				null
 			);
 			return cDO
-		},
-		put: function(data) {
-//			console.debug('specif.put',data)
-			// no transformation needed in this context
-			return data
+			
+			function get(url,rspT,auth,successFn,nextFn) {
+				// https://blog.garstasio.com/you-dont-need-jquery/
+				// https://www.sitepoint.com/guide-vanilla-ajax-without-jquery/
+				var xhr = new XMLHttpRequest();
+				xhr.open('GET', url, true);
+				xhr.withCredentials = auth;
+				// https://stackoverflow.com/a/42916772/2214
+				xhr.responseType = rspT;
+				xhr.onreadystatechange = function () {
+			//		console.debug('xhr',this.readyState,this)
+					if (this.readyState<4 ) return;
+					if (this.readyState==4 && this.status==200) {
+						if( typeof successFn=="function" ) successFn(this)
+					};
+					// continue in case of success and error:
+					if( typeof nextFn=="function" ) nextFn()	
+				};
+				xhr.send(null)
+			}
 		}
 	};
 // used by importSpecif to cache the data:
@@ -79,70 +152,13 @@ var myProject = {
 			// not implemented
 		}
 	};
-// the demo app:
-var app = {
-	main: function( file ) {
-			function readFile( f, fn ) {
-//				console.debug( 'readFile ' + f.name );
-				var rdr = new FileReader();
-				rdr.onload = function(evt) {
-					fn( evt.target.result )		// import the file
-						.done( function() {
-							// process:
-							console.info('specif',myProject.value);
-							toEpub( myProject.value, options )
-						})
-				//		.done( function() {alert('success')} )
-				//		.fail( function() {alert('failure')} )
-				};
-				rdr.readAsArrayBuffer( f )
-			}
-		// initialize:
-		var importSpecif = new ImportSpecif(); 	
-		importSpecif.open();
-		// check if file-type is eligible:
-		file = importSpecif.verify( file ); 
-		if( !file ) {
-			alert('wrong file-type');
-			return
-		};
-		
-		var options = { 
-				// If a hidden property is defined with value, it is suppressed only if it has this value;
-				// if the value is undefined, the property is suppressed in all cases.
-				hiddenProperties: [{title:'SpecIF:Type',value:'SpecIF:Folder'},{title:'SpecIF:Type',value:'Folder'}],
-				hideEmptyProperties: true,
-				propertiesLabel: 'Properties',
-				statementsLabel: 'Statements'
-			};
-		readFile( file, importSpecif.asBuf )
-	}
-}
+
 ///////////////////////////////////////////
 // used by importSpecif for transformation:
 	const CONFIG = {
 		imgExtensions: [ 'png', 'jpg', 'svg', 'gif', 'jpeg', 'png' ],
 		officeExtensions: []		// not supported (yet??)
 	};
-	function get(url,rspT,auth,successFn,nextFn) {
-		// https://blog.garstasio.com/you-dont-need-jquery/
-		// https://www.sitepoint.com/guide-vanilla-ajax-without-jquery/
-		var xhr = new XMLHttpRequest();
-		xhr.open('GET', url, true);
-		if( auth ) xhr.withCredentials = "true";
-		// https://stackoverflow.com/a/42916772/2214
-		xhr.responseType = rspT;
-		xhr.onreadystatechange = function () {
-	//		console.debug('xhr',this.readyState,this)
-			if (this.readyState<4 ) return;
-			if (this.readyState==4 && this.status==200) {
-				if( typeof successFn=="function" ) successFn(this)
-			};
-			// continue in case of success and error:
-			if( typeof nextFn=="function" ) nextFn()	
-		};
-		xhr.send(null)
-	}
 	function buf2str(buf) {
 		// UTF-8 character table: http://www.i18nqa.com/debug/utf8-debug.html
 		// or: https://bueltge.de/wp-content/download/wk/utf-8_kodierungen.pdf
@@ -174,8 +190,12 @@ var app = {
 <div id="main">
 	<h1>SpecIF to ePub Converter</h1>
 	<div style="padding-left:1em">
-		<div id="selectFile" >Please pick a file of type specif or specifz:</div>
-		<input id="importFile" type="file" name="files[]" onchange="app.main(this.files[0])" /><!-- (no 'multiple' attribute) -->
+		<p>Please pick a file of type specif or specifz:<br />
+			<input id="importFile" type="file" onchange="app.verify()" />
+		</p>
+		<p>Read SpecIF file and in transform to ePub:<br />
+			<button id="startButton" type="button" disabled onclick="app.main()" >Start</button>
+		</p>
 	</div>
 </div>
 </body>

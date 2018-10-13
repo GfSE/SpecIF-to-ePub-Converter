@@ -1,6 +1,11 @@
 function toEpub( specifData, opts ) {
 	"use strict";
 	// Accepts data-sets according to SpecIF v0.10.4 or v0.11.2 and later.
+	// Copyright: adesso AG (http://adesso.de)
+	// License: Apache 2.0 (http://www.apache.org/licenses/)
+	// Dependencies: 
+	// - jszip ( https://github.com/Stuk/jszip ), 
+	// - fileSaver ( https://github.com/eligrey/FileSaver.js ), 
 	// ePub Tutorials: 
 	// - https://www.ibm.com/developerworks/xml/tutorials/x-epubtut/index.html
 	// - http://www.jedisaber.com/eBooks/formatsource.shtml
@@ -13,8 +18,8 @@ function toEpub( specifData, opts ) {
 	if( !opts.metaFontColor ) opts.metaFontColor = '#0071B9';	// adesso blue
 	if( !opts.linkFontColor ) opts.linkFontColor = '#0071B9';
 //	if( !opts.linkFontColor ) opts.linkFontColor = '#005A92';	// darker
-	if( opts.linkNotUnderlined==undefined ) opts.linkNotUnderlined = false;
-	if( opts.preferPng==undefined ) opts.preferPng = true;
+	if( typeof opts.linkNotUnderlined!='boolean' ) opts.linkNotUnderlined = false;
+	if( typeof opts.preferPng!='boolean' ) opts.preferPng = true;
 	opts.epubImgPath = 'Images/';
 		
 	// All required parameters are available, so we can begin:
@@ -151,7 +156,7 @@ function toEpub( specifData, opts ) {
 			else
 				console.info('No image file found for ',ePub.images[i].id)
 		};
-		// done, store the ePub file in a zip container:
+		// finally store the ePub file in a zip container:
 		zip.generateAsync({
 				type: "blob"
 			})
@@ -160,11 +165,12 @@ function toEpub( specifData, opts ) {
 //					console.debug('storing ',ePub.fileName+".epub");
 					saveAs(blob, ePub.fileName+".epub");
 					if( typeof opts.done=="function" ) opts.done()
-			}, 
-				function(xhr) {
-					console.debug('cannot store ',ePub.fileName+".epub");
-					if( typeof opts.fail=="function" ) opts.fail(xhr)
-			});
+				}, 
+				function(error) {
+//					console.debug("cannot store ",ePub.fileName+".epub");
+					if( typeof opts.fail=="function" ) opts.fail({status:299,statusText:"Cannot store "+ePub.fileName+".epub"})
+				}
+			);
 		return
 
 		// ---------------

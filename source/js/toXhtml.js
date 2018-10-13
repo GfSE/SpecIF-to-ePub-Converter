@@ -1,6 +1,8 @@
 function toXhtml( specifData, opts ) {
 	"use strict";
 	// Accepts data-sets according to SpecIF v0.10.4 or v0.11.2 and later.
+	// Copyright: adesso AG (http://adesso.de)
+	// License: Apache 2.0 (http://www.apache.org/licenses/)
 	// Limitations:
 	// - HTML ids are made from resource ids, so multiple reference of a resource results in mutiple occurrences of the same id.
 	// - Title links are only correct if they reference objects in the same SpecIF hierarchy (hence, the same xhtml file)
@@ -19,7 +21,7 @@ function toXhtml( specifData, opts ) {
 	if( !opts.statementsLabel ) opts.statementsLabel = 'Statements';	
 	if( !opts.titleLinkBegin ) opts.titleLinkBegin = '\\[\\[';		// must escape javascript AND RegEx
 	if( !opts.titleLinkEnd ) opts.titleLinkEnd = '\\]\\]';			// must escape javascript AND RegEx
-	if( opts.titleLinkMinLength==undefined ) opts.titleLinkMinLength = 3;	
+	if( typeof opts.titleLinkMinLength!='number' ) opts.titleLinkMinLength = 3;	
 	opts.addTitleLinks = opts.titleLinkBegin && opts.titleLinkEnd && opts.titleLinkMinLength>0;
 	if( opts.titleLinkBegin && opts.titleLinkEnd )
 		opts.RETitleLink = new RegExp( opts.titleLinkBegin+'(.+?)'+opts.titleLinkEnd, 'g' );
@@ -57,31 +59,29 @@ function toXhtml( specifData, opts ) {
 	// All required parameters are available, so we can begin.
 	var xhtml = {
 			headings: [],		// used to build the ePub table of contents
-			sections: [],		// a xhtml file per SpecIF hierarchy
-			images: []
+			sections: [],		// the xhtml files for the title and each chapter=section
+			images: []			// the referenced images
 		};
 	
-	// The first section is a xhtml-file with the title page:
+	// Create a title page as xhtml-file and add it as first section:
 	xhtml.sections.push(
-		xhtmlOf( 
-			specifData.title,
-			null,
-			null,
-			'<div class="title">'+specifData.title+'</div>'
-		)
+			xhtmlOf({ 
+				title: specifData.title,
+				sect: null,
+				body: '<div class="title">'+specifData.title+'</div>'
+			})
 	);
 	
-	// For each SpecIF hierarchy a xhtml-file is created and added as subsequent sections:
+	// For each SpecIF hierarchy, create a xhtml-file and add it as subsequent section:
 	let firstHierarchySection = xhtml.sections.length;  // index of the next section number
 	for( var h=0,H=specifData.hierarchies.length; h<H; h++ ) {
 		pushHeading( specifData.hierarchies[h].title, {nodeId: specifData.hierarchies[h].id, level: 1} );
 		xhtml.sections.push(
-			xhtmlOf( 
-				specifData.title,
-				specifData.hierarchies[h].id,
-				specifData.hierarchies[h].title,
-				renderChildrenOf( specifData.hierarchies[h], 1 )
-			)
+			xhtmlOf({ 
+				title: specifData.title,
+				sect: specifData.hierarchies[h],
+				body: renderChildrenOf( specifData.hierarchies[h], 1 )
+			})
 		)
 	};
 
@@ -90,7 +90,7 @@ function toXhtml( specifData, opts ) {
 	return xhtml
 	
 	// ---------------
-	function pushHeading( t, pars ) {
+	function pushHeading( t, pars ) {	// title, parameters
 		xhtml.headings.push({
 				id: pars.nodeId,
 				title: t,
@@ -98,11 +98,12 @@ function toXhtml( specifData, opts ) {
 				level: pars.level
 		})
 	}
-	function titleValOf( r, rC, opts ) {
+	function titleValOf( r, rC, opts ) {	// resource, resourceClass, options
 		// get the title value of the properties:
+		// starting SpecIF 10.4, rC is r['class'] for resources, statements and hierarchies.
 		if( r.properties ) {
-			let pr=null;
-			for( var a=0,A=r.properties.length; a<A; a++ ) {
+			let pr=null, a, A;
+			for( a=0,A=r.properties.length; a<A; a++ ) {
 				pr = r.properties[a];
 				rC.isHeading = rC.isHeading || opts.headingProperties.indexOf(pr.title)>-1;
 				if( opts.headingProperties.indexOf(pr.title)>-1
@@ -116,6 +117,8 @@ function toXhtml( specifData, opts ) {
 	}
 	function titleOf( r, rC, pars, opts ) { // resource, resourceClass, parameters, options
 		// render the resource title
+		// designed for use also by statements and hierarchies.
+		// starting SpecIF 10.4, rC is r['class'] for resources, statements and hierarchies.
 		let ic = rC.icon;
 		if( ic==undefined ) ic = '';
 		if( ic ) ic += '&#160;'; // non-breakable space
@@ -126,20 +129,23 @@ function toXhtml( specifData, opts ) {
 		return '<h'+h+' id="'+pars.nodeId+'">'+(ti?ic+ti:'')+'</h'+h+'>'
 	}
 	function statementsOf( r, opts ) { // resource, options
-		// render the statements (relations) for the resource in a table
+		// render the statements (relations) about the resource in a table
 		if( !opts.statementsLabel ) return '';
 		let i, I, sts={}, st, cl, cid, oid, sid, ct='', r2, noSts=true;
 		// Collect statements by type:
 		for( i=0, I=specifData.statements.length; i<I; i++ ) {
 			st = specifData.statements[i];
-			cid = st[sClass];
+			cid = st[sClass];  // statement class id
 			// SpecIF v0.10.x: subject/object without revision, v0.11.y: with revision
-			oid = st.object.id || st.object;
 			sid = st.subject.id || st.subject;
+			oid = st.object.id || st.object;
 //			console.debug(st,cid);
 			if( sid==r.id || oid==r.id ) {
+				// the statement us about the resource:
 				noSts = false;
+				// create a list of statements with that type, unless it exists already:
 				if( !sts[cid] ) sts[cid] = {subjects:[],objects:[]};
+				// add the resource to the list, assuming that it can be either subject or object, but not both:
 				if( sid==r.id ) sts[cid].objects.push( itemById(specifData.resources,oid) )
 				else sts[cid].subjects.push( itemById(specifData.resources,sid) )
 			}
@@ -147,6 +153,7 @@ function toXhtml( specifData, opts ) {
 //		console.debug( 'statements', r.title, sts );
 //		if( Object.keys(sts).length<1 ) return '';
 		if( noSts ) return '';
+		// else, there are statements to render:
 		ct = '<p class="metaTitle">'+opts.statementsLabel+'</p>';
 		ct += '<table class="statementTable"><tbody>';
 		for( cid in sts ) {
@@ -223,11 +230,14 @@ function toXhtml( specifData, opts ) {
 	}
 	function propertiesOf( r, rC, opts ) {
 		// render the resource's properties with title and value as xhtml:
+		// designed for use also by statements and hierarchies.
+		// starting SpecIF 10.4, rC is r['class'] for resources, statements and hierarchies.
 		if( !r.properties || r.properties.length<1 ) return '';
 		// return the content of all properties, sorted by description and other properties:
-		let a=null, A=null, c1='', c2='', hPi=null, rt=null;
+		let a=null, A=null, c1='', rows='', hPi=null, rt=null;
 		for( a=0,A=r.properties.length; a<A; a++ ) {
-			rt = r.properties[a].title;
+			// the property title or it's class's title:
+			rt = r.properties[a].title || itemById(rC[pClasses],r.properties[a][pClass]).title;
 			// The content of the title property is already used as chapter title; so skip it here:
 			if( opts.headingProperties.indexOf(rt)>-1
 				|| opts.titleProperties.indexOf(rt)>-1 ) continue;
@@ -242,7 +252,8 @@ function toXhtml( specifData, opts ) {
 		
 		// Finally, list the remaining properties with property title (name) and value:
 		for( a=0,A=r.properties.length; a<A; a++ ) {
-			rt = r.properties[a].title;
+			// the property title or it's class's title:
+			rt = r.properties[a].title || itemById(rC[pClasses],r.properties[a][pClass]).title;
 			hPi = indexBy(opts.hiddenProperties,'title',rt);
 //			console.debug('hPi',hPi,rt,r.properties[a].value);
 			if( opts.hideEmptyProperties && isEmpty(r.properties[a].value)
@@ -250,10 +261,14 @@ function toXhtml( specifData, opts ) {
 				|| opts.headingProperties.indexOf(rt)>-1
 				|| opts.titleProperties.indexOf(rt)>-1 
 				|| opts.descriptionProperties.indexOf(rt)>-1 ) continue;
-			c2 += '<tr><td class="propertyTitle">'+rt+'</td><td>'+valOf( r.properties[a] )+'</td></tr>'
+			rows += '<tr><td class="propertyTitle">'+rt+'</td><td>'+valOf( r.properties[a] )+'</td></tr>'
 		};
-		if( !c2 ) return c1;
-		return c1+'<p class="metaTitle">'+opts.propertiesLabel+'</p><table class="propertyTable"><tbody>'+c2+'</tbody></table>'
+		// Add a property 'SpecIF:Type':
+//		if( rC.title )
+//			rows += '<tr><td class="propertyTitle">SpecIF:Type</td><td>'+rC.title+'</td></tr>';
+
+		if( !rows ) return c1;	// no other properties
+		return c1+'<p class="metaTitle">'+opts.propertiesLabel+'</p><table class="propertyTable"><tbody>'+rows+'</tbody></table>'
 
 		// ---------------
 		function isEmpty( str ) {
@@ -298,7 +313,7 @@ function toXhtml( specifData, opts ) {
 					str = str.replace('\\','/');
 					return str.substring( 0, str.lastIndexOf('.') )
 				}
-				function pushReferencedFiles( i, u, t ) {
+				function pushReferencedFile( i, u, t ) {
 					// avoid duplicate entries:
 					if( indexBy( xhtml.images, 'id', i )<0 ) {
 						xhtml.images.push({
@@ -354,7 +369,7 @@ function toXhtml( specifData, opts ) {
 					// unfortunately some (or even most) ePub-Readers do not support subfolders for images.
 					// So we need to generate a GUID and to store all files in a single folder.
 					let i2 = hashCode(u2)+'.'+extOf(u2);
-					pushReferencedFiles( i2, u2, t2 );
+					pushReferencedFile( i2, u2, t2 );
 	//				console.debug( $0, $4, u1, t1, i2, u2, t2 );
 					return'<img src="'+addEpubPath(i2)+'" style="max-width:100%" alt="'+$4+'" />'
 //					return'<div class="forImage"><object data="'+addEpubPath(u2)+'"'+t2+s2+' >'+$4+'</object></div>'
@@ -392,7 +407,7 @@ function toXhtml( specifData, opts ) {
 							t1 = png.mimeType
 						};
 						let i1 = hashCode(u1)+'.'+extOf(u1);
-						pushReferencedFiles( i1, u1, t1 );
+						pushReferencedFile( i1, u1, t1 );
 						d = '<img src="'+addEpubPath(i1)+'" style="max-width:100%" alt="'+d+'" />'
 //						d = '<object data="'+addEpubPath(u1)+'"'+t1+s1+' >'+d+'</object>
 					} else {
@@ -401,7 +416,7 @@ function toXhtml( specifData, opts ) {
 							u1 = png.id;
 							t1 = png.mimeType;
 							let i1 = hashCode(u1)+'.'+extOf(u1);
-							pushReferencedFiles( i1, u1, t1 );
+							pushReferencedFile( i1, u1, t1 );
 							d = '<img src="'+addEpubPath(i1)+'" style="max-width:100%" alt="'+d+'" />'
 //							d = '<object data="'+addEpubPath( fileName(u1) )+'.png" type="image/png" >'+d+'</object>'
 						} else {
@@ -428,13 +443,12 @@ function toXhtml( specifData, opts ) {
 			// - Titles shorter than 4 characters are ignored
 			// - see: https://www.mediawiki.org/wiki/Help:Links
 
-//			console.log('*',opts.RETitleLink,str);
-			
 			// in certain situations, remove the dynamic linking pattern from the text:
 			if( !opts.addTitleLinks )
 				return str.replace( opts.RETitleLink, function( $0, $1 ) { return $1 } )
 				
 			// else, find all dynamic link patterns in the current property and replace them by a link, if possible:
+			// ToDo: Check whether the do-loop can be omitted - the replacement is global anyways.
 			let replaced = null;
 			do {
 				replaced = false;
@@ -516,18 +530,18 @@ function toXhtml( specifData, opts ) {
 		};
 		return ch
 	}
-	function xhtmlOf( headTitle, sectId, sectTitle, body ) {
-		// make a xhtml file from the content provided:
+	function xhtmlOf( doc ) {
+		// make a xhtml file content from the elements provided:
 		return	'<?xml version="1.0" encoding="UTF-8"?>'
 		+		'<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">'
 		+		'<html xmlns="http://www.w3.org/1999/xhtml">'
 		+			'<head>'
 		+				'<link rel="stylesheet" type="text/css" href="../Styles/styles.css" />'
-		+				'<title>'+headTitle+'</title>'
+		+				'<title>'+doc.title+'</title>'
 		+			'</head>'
 		+			'<body>'
-		+	(sectTitle?	'<h1'+(sectId?' id="'+sectId+'"':'')+'>'+sectTitle+'</h1>' : '')
-		+				body
+		+	(doc.sect&&doc.sect.title?	'<h1'+(doc.sect.id?' id="'+doc.sect.id+'"':'')+'>'+doc.sect.title+'</h1>' : '')
+		+				doc.body
 		+			'</body>'
 		+		'</html>'
 	}

@@ -127,7 +127,7 @@ function toEpub( specifData, opts ) {
 		let zip = new JSZip(),
 			i=null, I=null;
 			
-		console.debug('storeEpub',ePub);
+//		console.debug('storeEpub',ePub);
 		zip.file( "mimetype", ePub.mimetype );
 		zip.file( "META-INF/container.xml", ePub.container );
 		zip.file( "OEBPS/content.opf", ePub.content );
@@ -154,7 +154,7 @@ function toEpub( specifData, opts ) {
 			if( img && img.id && img.blob )
 				zip.file( "OEBPS/"+opts.epubImgPath+ePub.images[i].id, img.blob )
 			else
-				console.info('No image file found for ',ePub.images[i].id)
+				console.warn('No image file found for ',ePub.images[i].id)
 		};
 		// finally store the ePub file in a zip container:
 		zip.generateAsync({

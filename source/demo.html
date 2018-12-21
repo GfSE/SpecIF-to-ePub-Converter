@@ -11,7 +11,7 @@
 	<script type="text/javascript" src="./lib/ajv/ajv-4.11.8.min.js"></script>
 	<script type="text/javascript" src="./lib/jszip/dist/jszip.js"></script>
 	<script type="text/javascript" src="https://specif.de/v0.10.4/check.js"></script>
-	<script type="text/javascript" src="./lib/specif/importSpecif-0.93.1.js"></script>
+	<script type="text/javascript" src="./lib/specif/importSpecif.js"></script>
 	<script type="text/javascript" src="./js/toXhtml.js"></script>
 	<script type="text/javascript" src="./js/toEpub.js"></script>
 </head>
@@ -19,20 +19,19 @@
 <script type="text/javascript">
 ////////////////////////////////////////////////////
 // This demo app imports SpecIF data from a file and uses 
-// the toEpub and toXhtml routines for transformation to ePub. 
+// the toEpub and toXhtml routines to create an ePub Document. 
 // Copyright: adesso AG (http://adesso.de)
 // License: Apache 2.0 (http://www.apache.org/licenses/)
 //
 
-var file = null,			// the picked import file
-	importSpecif = null;	// the import routine for SpecIF files
+var file = null,						// the picked import file
+	importSpecif = new ImportSpecif();	// the import routine for SpecIF files
 
 // the demo app:
 var app = {
 	verify: function() {
 
 		// initialize:
-		importSpecif = new ImportSpecif(); 	
 		importSpecif.open();
 
 		// get the selected file:
@@ -80,6 +79,7 @@ var app = {
 	}
 }
 
+///////////////////////////////////////////
 // used by importSpecif to check and manipulate SpecIF data:
 var	specif = {
 		check: function( data ) {
@@ -152,8 +152,6 @@ var myProject = {
 			// not implemented
 		}
 	};
-
-///////////////////////////////////////////
 // used by importSpecif for transformation:
 	const CONFIG = {
 		imgExtensions: [ 'png', 'jpg', 'svg', 'gif', 'jpeg', 'png' ],

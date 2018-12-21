@@ -485,7 +485,7 @@ function toXhtml( specifData, opts ) {
 		}
 		function valOf( pr ) {
 			// return the value of a single property:
-//			console.debug('#',rC,pr,rClass);
+//			console.debug('valOf',pr,rC,pClass);
 			let dT = dataTypeOf(specifData.dataTypes, rC, pr[pClass] );
 			switch( dT.type ) {
 				case 'xs:enumeration':

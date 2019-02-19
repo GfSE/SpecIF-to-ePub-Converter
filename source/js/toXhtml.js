@@ -1,4 +1,4 @@
-function toXhtml( specifData, opts ) {
+function toXhtml( data, opts ) {
 	"use strict";
 	// Accepts data-sets according to SpecIF v0.10.4 or v0.11.2 and later.
 	// Copyright: adesso AG (http://adesso.de)
@@ -27,11 +27,11 @@ function toXhtml( specifData, opts ) {
 		opts.RETitleLink = new RegExp( opts.titleLinkBegin+'(.+?)'+opts.titleLinkEnd, 'g' );
 
 	// set certain SpecIF element names according to the SpecIF version:
-	switch( specifData.specifVersion ) {
+	switch( data.specifVersion ) {
 		case '0.10.0':
 		case '0.10.1':
-//			return { result: null, status: 903, statusText: 'SpecIF version '+specifData.specifVersion+' is not any more supported!' };
-			console.error('SpecIF version '+specifData.specifVersion+' is not any more supported!');
+//			return { result: null, status: 903, statusText: 'SpecIF version '+data.specifVersion+' is not any more supported!' };
+			console.error('SpecIF version '+data.specifVersion+' is not any more supported!');
 			return null;
 		case '0.10.2':
 		case '0.10.3':
@@ -42,18 +42,13 @@ function toXhtml( specifData, opts ) {
 				sClass = 'statementType',
 				pClass = 'propertyType';
 			break;
-		case '0.10.4':
+		default:
 			var rClasses = 'resourceClasses',
 				sClasses = 'statementClasses',
 				pClasses = 'propertyClasses',
-				rClass = 'class';
-				sClass = 'class'
-				pClass = 'class';
-			break;
-		default:
-//			return { result: null, status: 904, statusText: 'SpecIF version '+specifData.specifVersion+' is not (yet) supported!' };
-			console.error('SpecIF version '+specifData.specifVersion+' is not (yet) supported!');
-			return null;
+				rClass = 'class',
+				sClass = 'class',
+				pClass = 'class'
 	};
 	
 	// All required parameters are available, so we can begin.
@@ -66,24 +61,24 @@ function toXhtml( specifData, opts ) {
 	// Create a title page as xhtml-file and add it as first section:
 	xhtml.sections.push(
 			xhtmlOf({ 
-				title: specifData.title,
+				title: data.title,
 				sect: null,
-				body: '<div class="title">'+specifData.title+'</div>'
+				body: '<div class="title">'+data.title+'</div>'
 			})
 	);
 	
 	// For each SpecIF hierarchy, create a xhtml-file and add it as subsequent section:
 	let firstHierarchySection = xhtml.sections.length;  // index of the next section number
-	for( var h=0,H=specifData.hierarchies.length; h<H; h++ ) {
-		pushHeading( specifData.hierarchies[h].title, {nodeId: specifData.hierarchies[h].id, level: 1} );
+	data.hierarchies.forEach( function(h,hi) {
+		pushHeading( h.title, {nodeId: h.id, level: 1} );
 		xhtml.sections.push(
 			xhtmlOf({ 
-				title: specifData.title,
-				sect: specifData.hierarchies[h],
-				body: renderChildrenOf( specifData.hierarchies[h], 1 )
+				title: data.title,
+				sect: h,
+				body: renderChildrenOf( h, hi, 1 )
 			})
 		)
-	};
+	});
 
 //	console.debug('xhtml',xhtml);
 //	return { result: xhtml, status: 200, statusText: 'OK!' };
@@ -125,16 +120,15 @@ function toXhtml( specifData, opts ) {
 		let ti = titleValOf( r, rC, opts );
 		if( !pars || pars.level<1 ) return (ti?ic+ti:'');
 		if( rC.isHeading ) pushHeading( ti, pars );
-		let h = rC.isHeading?2:3;
-		return '<h'+h+' id="'+pars.nodeId+'">'+(ti?ic+ti:'')+'</h'+h+'>'
+		let l = rC.isHeading?2:3;
+		return '<h'+l+' id="'+pars.nodeId+'">'+(ti?ic+ti:'')+'</h'+l+'>'
 	}
-	function statementsOf( r, opts ) { // resource, options
+	function statementsOf( r, hi, opts ) { // resource, options
 		// render the statements (relations) about the resource in a table
 		if( !opts.statementsLabel ) return '';
-		let i, I, sts={}, st, cl, cid, oid, sid, ct='', r2, noSts=true;
+		let sts={}, st, cl, cid, oid, sid, ct='', noSts=true;
 		// Collect statements by type:
-		for( i=0, I=specifData.statements.length; i<I; i++ ) {
-			st = specifData.statements[i];
+		data.statements.forEach( function(st) {
 			cid = st[sClass];  // statement class id
 			// SpecIF v0.10.x: subject/object without revision, v0.11.y: with revision
 			sid = st.subject.id || st.subject;
@@ -146,10 +140,10 @@ function toXhtml( specifData, opts ) {
 				// create a list of statements with that type, unless it exists already:
 				if( !sts[cid] ) sts[cid] = {subjects:[],objects:[]};
 				// add the resource to the list, assuming that it can be either subject or object, but not both:
-				if( sid==r.id ) sts[cid].objects.push( itemById(specifData.resources,oid) )
-				else sts[cid].subjects.push( itemById(specifData.resources,sid) )
+				if( sid==r.id ) sts[cid].objects.push( itemById(data.resources,oid) )
+				else sts[cid].subjects.push( itemById(data.resources,sid) )
 			}
-		};
+		});
 //		console.debug( 'statements', r.title, sts );
 //		if( Object.keys(sts).length<1 ) return '';
 		if( noSts ) return '';
@@ -158,58 +152,54 @@ function toXhtml( specifData, opts ) {
 		ct += '<table class="statementTable"><tbody>';
 		for( cid in sts ) {
 			// we don't have (and don't need) the individual statement, just the class:
-			cl = itemById(specifData[sClasses],cid);
+			cl = itemById(data[sClasses],cid);
 /*			// 5 columns:
 			ct += '<tr><td>';
-			for( i=0, I=sts[cid].subjects.length; i<I; i++ ) {
-				r2 = sts[cid].subjects[i];
-//				console.debug('r2',r2,itemById( specifData[rClasses], r2[rClass]))
-				ct += '<a href="#'+r2.id+'">'+titleOf( r2, itemById( specifData[rClasses], r2[rClass]), null, opts )+'</a><br/>'
+			sts[cid].subjects.forEach( function(r2) {
+//				console.debug('r2',r2,itemById( data[rClasses], r2[rClass]))
+				ct += '<a href="#'+r2.id+'">'+titleOf( r2, itemById( data[rClasses], r2[rClass]), null, opts )+'</a><br/>'
 			};
 			ct += '</td><td class="statementTitle">'+(sts[cid].subjects.length>0?cl.title:'');
-			ct += '</td><td>'+titleOf( r, itemById(specifData[rClasses],r[rClass]), null, opts );
+			ct += '</td><td>'+titleOf( r, itemById(data[rClasses],r[rClass]), null, opts );
 			ct += '</td><td class="statementTitle">'+(sts[cid].objects.length>0?cl.title:'')+'</td><td>';
-			for( i=0, I=sts[cid].objects.length; i<I; i++ ) {
-				r2 = sts[cid].objects[i];
-				ct += '<a href="#'+r2.id+'">'+titleOf( r2, itemById( specifData[rClasses], r2[rClass]), null, opts )+'</a><br/>'
+			sts[cid].objects.forEach( function(r2) {
+				ct += '<a href="#'+r2.id+'">'+titleOf( r2, itemById( data[rClasses], r2[rClass]), null, opts )+'</a><br/>'
 			};
 			ct += '</td></tr>'
 */
 			// 3 columns:
 			if( sts[cid].subjects.length>0 ) {
 				ct += '<tr><td>';
-				for( i=0, I=sts[cid].subjects.length; i<I; i++ ) {
-					r2 = sts[cid].subjects[i];
-//					console.debug('r2',r2,itemById( specifData[rClasses], r2[rClass]))
-					ct += '<a href="'+anchorOf( r2, h )+'">'+titleOf( r2, itemById( specifData[rClasses], r2[rClass]), null, opts )+'</a><br/>'
-				};
+				sts[cid].subjects.forEach( function(r2) {
+//					console.debug('r2',r2,itemById( data[rClasses], r2[rClass]))
+					ct += '<a href="'+anchorOf( r2, hi )+'">'+titleOf( r2, itemById( data[rClasses], r2[rClass]), null, opts )+'</a><br/>'
+				});
 				ct += '</td><td class="statementTitle">'+cl.title;
-				ct += '</td><td>'+titleOf( r, itemById(specifData[rClasses],r[rClass]), null, opts );
+				ct += '</td><td>'+titleOf( r, itemById(data[rClasses],r[rClass]), null, opts );
 				ct += '</td></tr>'
 			};
 			if( sts[cid].objects.length>0 ) {
-				ct += '<tr><td>'+titleOf( r, itemById(specifData[rClasses],r[rClass]), null, opts );
+				ct += '<tr><td>'+titleOf( r, itemById(data[rClasses],r[rClass]), null, opts );
 				ct += '</td><td class="statementTitle">'+cl.title+'</td><td>';
-				for( i=0, I=sts[cid].objects.length; i<I; i++ ) {
-					r2 = sts[cid].objects[i];
-					ct += '<a href="'+anchorOf( r2, h )+'">'+titleOf( r2, itemById( specifData[rClasses], r2[rClass]), null, opts )+'</a><br/>'
-				};
+				sts[cid].objects.forEach( function(r2) {
+					ct += '<a href="'+anchorOf( r2, hi )+'">'+titleOf( r2, itemById( data[rClasses], r2[rClass]), null, opts )+'</a><br/>'
+				});
 				ct += '</td></tr>'
 			}
 		};
 		return ct + '</tbody></table>'
 	}
-	function anchorOf( res, h ) {
+	function anchorOf( res, hi ) {
 		// Find the hierarchy node id for a given resource;
 		// the first occurrence is returned:
 		let m=null, M=null, y=null, n=null, N=null, ndId=null;
-		for( m=0, M=specifData.hierarchies.length; m<M; m++ ) {
-			// for all hierarchies starting with the current one 'h', the index of the top-level loop:
-			y = (m+h) % M;  
-	//		console.debug( 'nodes', m, y, specifData.hierarchies );
-			if( specifData.hierarchies[y].nodes )
-				for( n=0, N=specifData.hierarchies[y].nodes.length; n<N; n++ ) {
-					ndId = nodeByRef( specifData.hierarchies[y].nodes[n] );
+		for( m=0, M=data.hierarchies.length; m<M; m++ ) {
+			// for all hierarchies starting with the current one 'hi', the index of the top-level loop:
+			y = (m+hi) % M;  
+	//		console.debug( 'nodes', m, y, data.hierarchies );
+			if( data.hierarchies[y].nodes )
+				for( n=0, N=data.hierarchies[y].nodes.length; n<N; n++ ) {
+					ndId = nodeByRef( data.hierarchies[y].nodes[n] );
 	//				console.debug('ndId',n,ndId);
 					if( ndId ) return ndId		// return node id
 				}
@@ -228,7 +218,7 @@ function toXhtml( specifData, opts ) {
 			return null
 		}
 	}
-	function propertiesOf( r, rC, opts ) {
+	function propertiesOf( r, rC, hi, opts ) {
 		// render the resource's properties with title and value as xhtml:
 		// designed for use also by statements and hierarchies.
 		// starting SpecIF 10.4, rC is r['class'] for resources, statements and hierarchies.
@@ -244,7 +234,7 @@ function toXhtml( specifData, opts ) {
 			// First the resource's description properties in full width:
 			if( r.properties[a].value
 				&& opts.descriptionProperties.indexOf(rt)>-1 ) {
-				c1 += valOf( r.properties[a] )
+				c1 += valOf( r.properties[a], hi )
 			}
 		};
 		// Skip the remaining properties, if no label is provided:
@@ -261,7 +251,7 @@ function toXhtml( specifData, opts ) {
 				|| opts.headingProperties.indexOf(rt)>-1
 				|| opts.titleProperties.indexOf(rt)>-1 
 				|| opts.descriptionProperties.indexOf(rt)>-1 ) continue;
-			rows += '<tr><td class="propertyTitle">'+rt+'</td><td>'+valOf( r.properties[a] )+'</td></tr>'
+			rows += '<tr><td class="propertyTitle">'+rt+'</td><td>'+valOf( r.properties[a], hi )+'</td></tr>'
 		};
 		// Add a property 'SpecIF:Type':
 //		if( rC.title )
@@ -358,7 +348,7 @@ function toXhtml( specifData, opts ) {
 					};
 					
 					// if the type is svg, png is preferred and available, replace it:
-					let png = itemById( specifData.files, fileName(u2)+'.png' );
+					let png = itemById( data.files, fileName(u2)+'.png' );
 					if( t2.indexOf('svg')>-1 && opts.preferPng && png ) {
 						u2 = png.id;
 						t2 = png.mimeType
@@ -397,7 +387,7 @@ function toXhtml( specifData, opts ) {
 					e = e.toLowerCase();
 	//				console.debug( $0, $1, 'url: ', u1, 'ext: ', e );
 						
-					let png = itemById( specifData.files, fileName(u1)+'.png' );
+					let png = itemById( data.files, fileName(u1)+'.png' );
 					if( opts.imgExtensions.indexOf( e )>-1 ) {  
 						// it is an image, show it:
 
@@ -435,7 +425,7 @@ function toXhtml( specifData, opts ) {
 	//		console.debug('fileRef result: ', txt);
 			return txt
 		}
-		function titleLinks( str, opts ) {
+		function titleLinks( str, hi, opts ) {
 			// Transform sub-strings with dynamic linking pattern to internal links.
 			// Syntax:
 			// - A resource (object) title between CONFIG.dynLinkBegin and CONFIG.dynLinkEnd will be transformed to a link to that resource.
@@ -458,8 +448,8 @@ function toXhtml( specifData, opts ) {
 //						if( $1.length<opts.titleLinkMinLength ) return $1;
 						let m=$1.toLowerCase(), cO=null, ti=null;
 						// is ti a title of any resource?
-						for( var x=specifData.resources.length-1;x>-1;x-- ) {
-							cO = specifData.resources[x];
+						for( var x=data.resources.length-1;x>-1;x-- ) {
+							cO = data.resources[x];
 										
 							// avoid self-reflection:
 //							if(ob.id==cO.id) continue;
@@ -468,13 +458,13 @@ function toXhtml( specifData, opts ) {
 //	??						if( myProject.selectedSpec.objectRefs.indexOf(cO.id)<0 ) continue;
 
 							// get the pure title text:
-							ti = titleValOf( cO, itemById( specifData[rClasses], cO[rClass] ), opts );
+							ti = titleValOf( cO, itemById( data[rClasses], cO[rClass] ), opts );
 
 							// disregard objects whose title is too short:
 							if( !ti || ti.length<opts.titleLinkMinLength ) continue;
 
 							// if the titleLink content equals a resource's title, replace it with a link:
-							if(m==ti.toLowerCase()) return '<a href="'+anchorOf(cO,h)+'">'+$1+'</a>'
+							if(m==ti.toLowerCase()) return '<a href="'+anchorOf(cO,hi)+'">'+$1+'</a>'
 						};
 						// The dynamic link has NOT been matched/replaced, so mark it:
 						return '<span style="color:#D82020">'+$1+'</span>'
@@ -483,10 +473,10 @@ function toXhtml( specifData, opts ) {
 			} while( replaced );
 			return str
 		}
-		function valOf( pr ) {
+		function valOf( pr, hi ) {
 			// return the value of a single property:
 //			console.debug('valOf',pr,rC,pClass);
-			let dT = dataTypeOf(specifData.dataTypes, rC, pr[pClass] );
+			let dT = dataTypeOf(data.dataTypes, rC, pr[pClass] );
 			switch( dT.type ) {
 				case 'xs:enumeration':
 					let ct = '',
@@ -502,32 +492,32 @@ function toXhtml( specifData, opts ) {
 					};
 					return escapeHTML( ct );
 				case 'xhtml':
-					return titleLinks( fileRef( pr.value, opts ), opts )
+					return titleLinks( fileRef( pr.value, opts ), hi, opts )
 				case 'xs:string':
-					return titleLinks( escapeHTML( pr.value ), opts )
+					return titleLinks( escapeHTML( pr.value ), hi, opts )
 				default:
 					return escapeHTML( pr.value )
 			}
 		}
 	}
-	function renderChildrenOf( nd, lvl ) {
+	function renderChildrenOf( nd, hi, lvl ) {
 		// For each of the children of specified hierarchy node 'nd', 
 		// write a paragraph for the referenced resource:
 		if( !nd.nodes || nd.nodes.length<1 ) return '';
-		let i=null, I=null, r=null, rC=null,
+		let r=null, rC=null,
 			params={
 				level: lvl
 			};
 		var ch = '';
-		for( i=0,I=nd.nodes.length; i<I; i++ ) {
-			r = itemById( specifData.resources,nd.nodes[i].resource );
-			rC = itemById( specifData[rClasses], r[rClass] );
-			params.nodeId = nd.nodes[i].id;
+		nd.nodes.forEach( function(n) {
+			r = itemById( data.resources,n.resource );
+			rC = itemById( data[rClasses], r[rClass] );
+			params.nodeId = n.id;
 			ch += 	titleOf( r, rC, params, opts )
-				+	propertiesOf( r, rC, opts )
-				+	statementsOf( r, opts )
-				+	renderChildrenOf( nd.nodes[i], lvl+1 )	// next level
-		};
+				+	propertiesOf( r, rC, hi, opts )
+				+	statementsOf( r, hi, opts )
+				+	renderChildrenOf( n, hi, lvl+1 )	// next level
+		});
 		return ch
 	}
 	function xhtmlOf( doc ) {

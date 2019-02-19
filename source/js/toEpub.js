@@ -1,4 +1,4 @@
-function toEpub( specifData, opts ) {
+function toEpub( data, opts ) {
 	"use strict";
 	// Accepts data-sets according to SpecIF v0.10.4 or v0.11.2 and later.
 	// Copyright: adesso AG (http://adesso.de)
@@ -18,17 +18,17 @@ function toEpub( specifData, opts ) {
 	if( !opts.metaFontColor ) opts.metaFontColor = '#0071B9';	// adesso blue
 	if( !opts.linkFontColor ) opts.linkFontColor = '#0071B9';
 //	if( !opts.linkFontColor ) opts.linkFontColor = '#005A92';	// darker
-	if( typeof opts.linkNotUnderlined!='boolean' ) opts.linkNotUnderlined = false;
-	if( typeof opts.preferPng!='boolean' ) opts.preferPng = true;
+	if( typeof(opts.linkNotUnderlined)!='boolean' ) opts.linkNotUnderlined = false;
+	if( typeof(opts.preferPng)!='boolean' ) opts.preferPng = true;
 	opts.epubImgPath = 'Images/';
 		
 	// All required parameters are available, so we can begin:
 	let i=null, I=null,
-		ePub = toXhtml( specifData, opts );
+		ePub = toXhtml( data, opts );
 	
-	ePub.fileName = specifData.title;
+	ePub.fileName = data.title;
 	ePub.mimetype = 'application/epub+zip';
-//	console.debug( 'files', specifData.files );
+//	console.debug( 'files', data.files );
 
 //	ePub.cover = undefined;
 	ePub.styles = 	
@@ -59,31 +59,31 @@ function toEpub( specifData, opts ) {
 				'<?xml version="1.0" encoding="UTF-8"?>'
 		+		'<package xmlns="http://www.idpf.org/2007/opf" unique-identifier="BookID" version="2.0" >'
 		+		'<metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">'
-		+			'<dc:identifier id="BookID" opf:scheme="UUID">SpecIF-'+specifData.id+'</dc:identifier>'	
-		+			'<dc:title>'+specifData.title+'</dc:title>'
-		+			'<dc:creator opf:role="aut">'+specifData.createdBy.familyName+', '+specifData.createdBy.givenName+'</dc:creator>'
-		+			'<dc:publisher>'+specifData.createdBy.org.organizationName+'</dc:publisher>'
+		+			'<dc:identifier id="BookID" opf:scheme="UUID">SpecIF-'+data.id+'</dc:identifier>'	
+		+			'<dc:title>'+data.title+'</dc:title>'
+		+			'<dc:creator opf:role="aut">'+data.createdBy.familyName+', '+data.createdBy.givenName+'</dc:creator>'
+		+			'<dc:publisher>'+data.createdBy.org.organizationName+'</dc:publisher>'
 		+			'<dc:language>en-US</dc:language>'
-		+			'<dc:rights>'+specifData.rights.title+'</dc:rights>'
+		+			'<dc:rights>'+data.rights.title+'</dc:rights>'
 		+		'</metadata>'
 		+		'<manifest>'
 		+			'<item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml" />'
 		+			'<item id="styles" href="Styles/styles.css" media-type="text/css" />'
 //		+			'<item id="pagetemplate" href="page-template.xpgt" media-type="application/vnd.adobe-page-template+xml" />'
 //		+			'<item id="titlepage" href="Text/title.xhtml" media-type="application/xhtml+xml" />';
-	for( i=0,I=ePub.sections.length; i<I; i++ ) {
+	ePub.sections.forEach( function(s,i) {
 		ePub.content += '<item id="sect'+i+'" href="Text/sect'+i+'.xhtml" media-type="application/xhtml+xml" />'
-	};
-	for( i=0,I=ePub.images.length; i<I; i++ ) {
-		ePub.content += '<item id="img'+i+'" href="'+opts.epubImgPath+ePub.images[i].id+'" media-type="'+ePub.images[i].mimeType+'"/>'
-	};
+	});
+	ePub.images.forEach( function(f,i) {
+		ePub.content += '<item id="img'+i+'" href="'+opts.epubImgPath+f.id+'" media-type="'+f.type+'"/>'
+	});
 
 	ePub.content += '</manifest>'
 		+		'<spine toc="ncx">'
 //		+			'<itemref idref="titlepage" />'
-	for( i=0,I=ePub.sections.length; i<I; i++ ) {
+	ePub.sections.forEach( function(s,i) {
 		ePub.content += '<itemref idref="sect'+i+'" />'
-	};
+	});
 	ePub.content += '</spine>'
 		+		'</package>';
 
@@ -91,13 +91,13 @@ function toEpub( specifData, opts ) {
 				'<?xml version="1.0" encoding="UTF-8"?>'
 		+		'<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">'
 		+		'<head>'
-		+			'<meta name="dtb:uid" content="SpecIF-'+specifData.id+'"/>'	
+		+			'<meta name="dtb:uid" content="SpecIF-'+data.id+'"/>'	
 		+			'<meta name="dtb:depth" content="1"/>'				// Verschachtelungstiefe
 		+			'<meta name="dtb:totalPageCount" content="0"/>'
 		+			'<meta name="dtb:maxPageNumber" content="0"/>'
 		+		'</head>'
 		+		'<docTitle>'
-		+			'<text>'+specifData.title+'</text>'
+		+			'<text>'+data.title+'</text>'
 		+		'</docTitle>'
 	// http://epubsecrets.com/nesting-your-toc-in-the-ncx-file-and-the-nookkindle-workaround.php
 		+		'<navMap>'
@@ -106,15 +106,15 @@ function toEpub( specifData, opts ) {
 		+				'<content src="Text/title.xhtml"/>'
 		+			'</navPoint>'
 */
-	for( i=0,I=ePub.headings.length; i<I; i++ ) {
+	ePub.headings.forEach( function(h,i) {
 		// Build a table of content;
-		// not all reader support nested ncx, so we provide a flat list.
+		// not all readers support nested ncx, so we provide a flat list.
 		// Some tutorials have proposed to indent the title instead, but this does not work, as leading whitespace seems to be ignored.
 		ePub.toc += 	'<navPoint id="tocHd'+i+'" playOrder="'+(i+1)+'">'
-			+				'<navLabel><text>'+ePub.headings[i].title+'</text></navLabel>'
-			+				'<content src="Text/sect'+ePub.headings[i].section+'.xhtml#'+ePub.headings[i].id+'"/>'
+			+				'<navLabel><text>'+h.title+'</text></navLabel>'
+			+				'<content src="Text/sect'+h.section+'.xhtml#'+h.id+'"/>'
 			+			'</navPoint>'
-	};
+	});
 	ePub.toc +=	'</navMap>'
 		+		'</ncx>';
 		
@@ -141,21 +141,19 @@ function toEpub( specifData, opts ) {
 		
 //		zip.file( "OEBPS/Text/title.xhtml", ePub.title );
 		// Add the hierarchies:
-		for( i=0,I=ePub.sections.length; i<I; i++ ) {
-			zip.file( "OEBPS/Text/sect"+i+".xhtml", ePub.sections[i] )
-		};
+		ePub.sections.forEach( function(s,i) {
+			zip.file( "OEBPS/Text/sect"+i+".xhtml", s )
+		});
 
-//		console.debug('files',ePub.images,specifData.files);
+//		console.debug('files',ePub.images,data.files);
 		// Add the images:
-		for( i=0,I=ePub.images.length; i<I; i++ ) {
-			let img = itemById(specifData.files, ePub.images[i].title);
-//			if( img && img.id && img.buffer )
-//				zip.file( "OEBPS/"+opts.epubImgPath+ePub.images[i].id, img.buffer )
+		ePub.images.forEach( function(f) {
+			let img = itemById(data.files, f.title);
 			if( img && img.id && img.blob )
-				zip.file( "OEBPS/"+opts.epubImgPath+ePub.images[i].id, img.blob )
+				zip.file( "OEBPS/"+opts.epubImgPath+f.id, img.blob )
 			else
-				console.warn('No image file found for ',ePub.images[i].id)
-		};
+				console.warn('No image file found for ',f.id)
+		});
 		// finally store the ePub file in a zip container:
 		zip.generateAsync({
 				type: "blob"
@@ -164,11 +162,11 @@ function toEpub( specifData, opts ) {
 				function(blob) {
 //					console.debug('storing ',ePub.fileName+".epub");
 					saveAs(blob, ePub.fileName+".epub");
-					if( typeof opts.done=="function" ) opts.done()
+					if( typeof(opts.done)=="function" ) opts.done()
 				}, 
 				function(error) {
 //					console.debug("cannot store ",ePub.fileName+".epub");
-					if( typeof opts.fail=="function" ) opts.fail({status:299,statusText:"Cannot store "+ePub.fileName+".epub"})
+					if( typeof(opts.fail)=="function" ) opts.fail({status:299,statusText:"Cannot store "+ePub.fileName+".epub"})
 				}
 			);
 		return

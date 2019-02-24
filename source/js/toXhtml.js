@@ -80,7 +80,7 @@ function toXhtml( data, opts ) {
 		)
 	});
 
-	console.debug('xhtml',xhtml);
+//	console.debug('xhtml',xhtml);
 //	return { result: xhtml, status: 200, statusText: 'OK!' };
 	return xhtml
 	
@@ -113,7 +113,6 @@ function toXhtml( data, opts ) {
 		// render the resource title
 		// designed for use also by statements and hierarchies.
 		// starting SpecIF 10.4, rC is r['class'] for resources, statements and hierarchies.
-		console.debug('titleOf',r, rC, pars, opts);
 		let ic = rC.icon;
 		if( ic==undefined ) ic = '';
 		if( ic ) ic += '&#160;'; // non-breakable space
@@ -134,7 +133,6 @@ function toXhtml( data, opts ) {
 			// SpecIF v0.10.x: subject/object without revision, v0.11.y: with revision
 			sid = st.subject.id || st.subject;
 			oid = st.object.id || st.object;
-//			console.debug(st,cid);
 			if( sid==r.id || oid==r.id ) {
 				// the statement us about the resource:
 				noSts = false;
@@ -220,9 +218,6 @@ function toXhtml( data, opts ) {
 		}
 	}
 	function propertyClassOf( rC, pCid ) {
-		console.debug('propertyClassOf',rC,pCid);
-		console.debug('propertyClassOf',itemById(data.propertyClasses,pCid));
-		console.debug('propertyClassOf',itemById(rC[pClasses],pCid));
 		return itemById(data.propertyClasses,pCid) 	// starting with v0.10.6
 			|| itemById(rC[pClasses],pCid);			// ending with v0.10.5
 	}
@@ -230,47 +225,40 @@ function toXhtml( data, opts ) {
 		// render the resource's properties with title and value as xhtml:
 		// designed for use also by statements and hierarchies.
 		// starting SpecIF 10.4, rC is r['class'] for resources, statements and hierarchies.
-		console.debug('propertiesOf',r, rC, hi, opts);
+//		console.debug('propertiesOf',r, rC, hi, opts);
 		if( !r.properties || r.properties.length<1 ) return '';
 		// return the content of all properties, sorted by description and other properties:
-		let a=null, A=null, c1='', rows='', prp, rt, hPi;
-		for( a=0,A=r.properties.length; a<A; a++ ) {
-			prp = r.properties[a];
+		let c1='', rows='', rt, hPi;
+		r.properties.forEach( function(prp) {
 			// the property title or it's class's title:
 			rt = prp.title || propertyClassOf( rC, prp[pClass] ).title;
 			// The content of the title property is already used as chapter title; so skip it here:
-			console.debug('propertiesOf prp',a,prp,rt);
 			if( opts.headingProperties.indexOf(rt)>-1
-				|| opts.titleProperties.indexOf(rt)>-1 ) continue;
+				|| opts.titleProperties.indexOf(rt)>-1 ) return;
 			// First the resource's description properties in full width:
-			if( prp.value
-				&& opts.descriptionProperties.indexOf(rt)>-1 ) {
+			if( prp.value && opts.descriptionProperties.indexOf(rt)>-1 ) {
 				c1 += valOf( prp, rC, hi )
 			}
-		};
+		});
 		// Skip the remaining properties, if no label is provided:
-		console.debug('c1',c1);
 		if( !opts.propertiesLabel ) return c1;
 		
 		// Finally, list the remaining properties with property title (name) and value:
-		for( a=0,A=r.properties.length; a<A; a++ ) {
-			prp = r.properties[a];
+		r.properties.forEach( function(prp) {
 			// the property title or it's class's title:
 			rt = prp.title || propertyClassOf( rC, prp[pClass] ).title;
 			hPi = indexBy(opts.hiddenProperties,'title',rt);
-//			console.debug('hPi',hPi,rt,prp.value);
 			if( opts.hideEmptyProperties && isEmpty(prp.value)
 				|| hPi>-1 && ( opts.hiddenProperties[hPi].value==undefined || opts.hiddenProperties[hPi].value==prp.value )
 				|| opts.headingProperties.indexOf(rt)>-1
 				|| opts.titleProperties.indexOf(rt)>-1 
-				|| opts.descriptionProperties.indexOf(rt)>-1 ) continue;
+				|| opts.descriptionProperties.indexOf(rt)>-1 ) return;
 			rows += '<tr><td class="propertyTitle">'+rt+'</td><td>'+valOf( prp, rC, hi )+'</td></tr>'
-		};
+		});
 		// Add a property 'SpecIF:Type':
 //		if( rC.title )
 //			rows += '<tr><td class="propertyTitle">SpecIF:Type</td><td>'+rC.title+'</td></tr>';
 
-		console.debug('c1-2',c1);
 		if( !rows ) return c1;	// no other properties
 		return c1+'<p class="metaTitle">'+opts.propertiesLabel+'</p><table class="propertyTable"><tbody>'+rows+'</tbody></table>'
 
@@ -484,9 +472,7 @@ function toXhtml( data, opts ) {
 		function valOf( prp, rC, hi ) {
 			// return the value of a single property:
 //			console.debug('valOf',prp,rC,hi);
-		//	let dT = dataTypeOf( rC, prp[pClass] );
 			let dT = itemById( data.dataTypes, propertyClassOf(rC,prp[pClass]).dataType );
-			console.debug('valOf',prp,rC,hi,dT);
 			switch( dT.type ) {
 				case 'xs:enumeration':
 					let ct = '',
@@ -513,7 +499,6 @@ function toXhtml( data, opts ) {
 	function renderChildrenOf( nd, hi, lvl ) {
 		// For each of the children of specified hierarchy node 'nd', 
 		// write a paragraph for the referenced resource:
-		console.debug('renderChildrenOf',nd,hi,lvl);
 		if( !nd.nodes || nd.nodes.length<1 ) return '';
 		let r=null, rC=null,
 			params={

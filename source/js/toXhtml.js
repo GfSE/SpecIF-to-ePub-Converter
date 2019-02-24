@@ -80,7 +80,7 @@ function toXhtml( data, opts ) {
 		)
 	});
 
-//	console.debug('xhtml',xhtml);
+	console.debug('xhtml',xhtml);
 //	return { result: xhtml, status: 200, statusText: 'OK!' };
 	return xhtml
 	
@@ -93,17 +93,16 @@ function toXhtml( data, opts ) {
 				level: pars.level
 		})
 	}
-	function titleValOf( r, rC, opts ) {	// resource, resourceClass, options
+	function titleValOf( r, opts ) {	// resource, resourceClass, options
 		// get the title value of the properties:
-		// starting SpecIF 10.4, rC is r['class'] for resources, statements and hierarchies.
+		// starting SpecIF v0.10.4, rC is r['class'] for resources, statements and hierarchies.
 		if( r.properties ) {
-			let pr=null, a, A;
-			for( a=0,A=r.properties.length; a<A; a++ ) {
-				pr = r.properties[a];
-				rC.isHeading = rC.isHeading || opts.headingProperties.indexOf(pr.title)>-1;
-				if( opts.headingProperties.indexOf(pr.title)>-1
-					|| opts.titleProperties.indexOf(pr.title)>-1 ) {
-						return escapeHTML( pr.value )
+			let prp;
+			for( var a=0,A=r.properties.length; a<A; a++ ) {
+				prp = r.properties[a];
+				if( opts.headingProperties.indexOf(prp.title)>-1
+					|| opts.titleProperties.indexOf(prp.title)>-1 ) {
+						return escapeHTML( prp.value )
 				}
 			}
 		};
@@ -114,11 +113,13 @@ function toXhtml( data, opts ) {
 		// render the resource title
 		// designed for use also by statements and hierarchies.
 		// starting SpecIF 10.4, rC is r['class'] for resources, statements and hierarchies.
+		console.debug('titleOf',r, rC, pars, opts);
 		let ic = rC.icon;
 		if( ic==undefined ) ic = '';
 		if( ic ) ic += '&#160;'; // non-breakable space
-		let ti = titleValOf( r, rC, opts );
+		let ti = titleValOf( r, opts );
 		if( !pars || pars.level<1 ) return (ti?ic+ti:'');
+	//	rC.isHeading = rC.isHeading || opts.headingProperties.indexOf(prp.title)>-1;
 		if( rC.isHeading ) pushHeading( ti, pars );
 		let l = rC.isHeading?2:3;
 		return '<h'+l+' id="'+pars.nodeId+'">'+(ti?ic+ti:'')+'</h'+l+'>'
@@ -218,45 +219,58 @@ function toXhtml( data, opts ) {
 			return null
 		}
 	}
+	function propertyClassOf( rC, pCid ) {
+		console.debug('propertyClassOf',rC,pCid);
+		console.debug('propertyClassOf',itemById(data.propertyClasses,pCid));
+		console.debug('propertyClassOf',itemById(rC[pClasses],pCid));
+		return itemById(data.propertyClasses,pCid) 	// starting with v0.10.6
+			|| itemById(rC[pClasses],pCid);			// ending with v0.10.5
+	}
 	function propertiesOf( r, rC, hi, opts ) {
 		// render the resource's properties with title and value as xhtml:
 		// designed for use also by statements and hierarchies.
 		// starting SpecIF 10.4, rC is r['class'] for resources, statements and hierarchies.
+		console.debug('propertiesOf',r, rC, hi, opts);
 		if( !r.properties || r.properties.length<1 ) return '';
 		// return the content of all properties, sorted by description and other properties:
-		let a=null, A=null, c1='', rows='', hPi=null, rt=null;
+		let a=null, A=null, c1='', rows='', prp, rt, hPi;
 		for( a=0,A=r.properties.length; a<A; a++ ) {
+			prp = r.properties[a];
 			// the property title or it's class's title:
-			rt = r.properties[a].title || itemById(rC[pClasses],r.properties[a][pClass]).title;
+			rt = prp.title || propertyClassOf( rC, prp[pClass] ).title;
 			// The content of the title property is already used as chapter title; so skip it here:
+			console.debug('propertiesOf prp',a,prp,rt);
 			if( opts.headingProperties.indexOf(rt)>-1
 				|| opts.titleProperties.indexOf(rt)>-1 ) continue;
 			// First the resource's description properties in full width:
-			if( r.properties[a].value
+			if( prp.value
 				&& opts.descriptionProperties.indexOf(rt)>-1 ) {
-				c1 += valOf( r.properties[a], hi )
+				c1 += valOf( prp, rC, hi )
 			}
 		};
 		// Skip the remaining properties, if no label is provided:
+		console.debug('c1',c1);
 		if( !opts.propertiesLabel ) return c1;
 		
 		// Finally, list the remaining properties with property title (name) and value:
 		for( a=0,A=r.properties.length; a<A; a++ ) {
+			prp = r.properties[a];
 			// the property title or it's class's title:
-			rt = r.properties[a].title || itemById(rC[pClasses],r.properties[a][pClass]).title;
+			rt = prp.title || propertyClassOf( rC, prp[pClass] ).title;
 			hPi = indexBy(opts.hiddenProperties,'title',rt);
-//			console.debug('hPi',hPi,rt,r.properties[a].value);
-			if( opts.hideEmptyProperties && isEmpty(r.properties[a].value)
-				|| hPi>-1 && ( opts.hiddenProperties[hPi].value==undefined || opts.hiddenProperties[hPi].value==r.properties[a].value )
+//			console.debug('hPi',hPi,rt,prp.value);
+			if( opts.hideEmptyProperties && isEmpty(prp.value)
+				|| hPi>-1 && ( opts.hiddenProperties[hPi].value==undefined || opts.hiddenProperties[hPi].value==prp.value )
 				|| opts.headingProperties.indexOf(rt)>-1
 				|| opts.titleProperties.indexOf(rt)>-1 
 				|| opts.descriptionProperties.indexOf(rt)>-1 ) continue;
-			rows += '<tr><td class="propertyTitle">'+rt+'</td><td>'+valOf( r.properties[a], hi )+'</td></tr>'
+			rows += '<tr><td class="propertyTitle">'+rt+'</td><td>'+valOf( prp, rC, hi )+'</td></tr>'
 		};
 		// Add a property 'SpecIF:Type':
 //		if( rC.title )
 //			rows += '<tr><td class="propertyTitle">SpecIF:Type</td><td>'+rC.title+'</td></tr>';
 
+		console.debug('c1-2',c1);
 		if( !rows ) return c1;	// no other properties
 		return c1+'<p class="metaTitle">'+opts.propertiesLabel+'</p><table class="propertyTable"><tbody>'+rows+'</tbody></table>'
 
@@ -438,51 +452,47 @@ function toXhtml( data, opts ) {
 				return str.replace( opts.RETitleLink, function( $0, $1 ) { return $1 } )
 				
 			// else, find all dynamic link patterns in the current property and replace them by a link, if possible:
-			// ToDo: Check whether the do-loop can be omitted - the replacement is global anyways.
-			let replaced = null;
-			do {
-				replaced = false;
-				str = str.replace( opts.RETitleLink, 
-					function( $0, $1 ) { 
-						replaced = true;
-//						if( $1.length<opts.titleLinkMinLength ) return $1;
-						let m=$1.toLowerCase(), cO=null, ti=null;
-						// is ti a title of any resource?
-						for( var x=data.resources.length-1;x>-1;x-- ) {
-							cO = data.resources[x];
-										
-							// avoid self-reflection:
-//							if(ob.id==cO.id) continue;
+			str = str.replace( opts.RETitleLink, 
+				function( $0, $1 ) { 
+//					if( $1.length<opts.titleLinkMinLength ) return $1;
+					let m=$1.toLowerCase(), cR, ti;
+					// is ti a title of any resource?
+					for( var x=data.resources.length-1;x>-1;x-- ) {
+						cR = data.resources[x];
+									
+						// avoid self-reflection:
+//						if(ob.id==cR.id) continue;
 
-							// disregard resources which are not referenced in the current tree (selected spec):
-//	??						if( myProject.selectedSpec.objectRefs.indexOf(cO.id)<0 ) continue;
+						// disregard resources which are not referenced in the current tree (selected spec):
+//	??					if( myProject.selectedSpec.objectRefs.indexOf(cR.id)<0 ) continue;
 
-							// get the pure title text:
-							ti = titleValOf( cO, itemById( data[rClasses], cO[rClass] ), opts );
+						// get the pure title text:
+						ti = titleValOf( cR, opts );
 
-							// disregard objects whose title is too short:
-							if( !ti || ti.length<opts.titleLinkMinLength ) continue;
+						// disregard objects whose title is too short:
+						if( !ti || ti.length<opts.titleLinkMinLength ) continue;
 
-							// if the titleLink content equals a resource's title, replace it with a link:
-							if(m==ti.toLowerCase()) return '<a href="'+anchorOf(cO,hi)+'">'+$1+'</a>'
-						};
-						// The dynamic link has NOT been matched/replaced, so mark it:
-						return '<span style="color:#D82020">'+$1+'</span>'
-					}
-				)
-			} while( replaced );
+						// if the titleLink content equals a resource's title, replace it with a link:
+						if(m==ti.toLowerCase()) return '<a href="'+anchorOf(cR,hi)+'">'+$1+'</a>'
+					};
+					// The dynamic link has NOT been matched/replaced, so mark it:
+					return '<span style="color:#D82020">'+$1+'</span>'
+				}
+			);
 			return str
 		}
-		function valOf( pr, hi ) {
+		function valOf( prp, rC, hi ) {
 			// return the value of a single property:
-//			console.debug('valOf',pr,rC,pClass);
-			let dT = dataTypeOf(data.dataTypes, rC, pr[pClass] );
+//			console.debug('valOf',prp,rC,hi);
+		//	let dT = dataTypeOf( rC, prp[pClass] );
+			let dT = itemById( data.dataTypes, propertyClassOf(rC,prp[pClass]).dataType );
+			console.debug('valOf',prp,rC,hi,dT);
 			switch( dT.type ) {
 				case 'xs:enumeration':
 					let ct = '',
 						val = null,
-						st = opts.stereotypeProperties.indexOf(pr.title)>-1,
-						vL = pr.value.split(',');  // in case of ENUMERATION, content carries comma-separated value-IDs
+						st = opts.stereotypeProperties.indexOf(prp.title)>-1,
+						vL = prp.value.split(',');  // in case of ENUMERATION, content carries comma-separated value-IDs
 					for( var v=0,V=vL.length;v<V;v++ ) {
 						val = itemById(dT.values,vL[v].trim());
 						// If 'val' is an id, replace it by title, otherwise don't change:
@@ -492,17 +502,18 @@ function toXhtml( data, opts ) {
 					};
 					return escapeHTML( ct );
 				case 'xhtml':
-					return titleLinks( fileRef( pr.value, opts ), hi, opts )
+					return titleLinks( fileRef( prp.value, opts ), hi, opts )
 				case 'xs:string':
-					return titleLinks( escapeHTML( pr.value ), hi, opts )
+					return titleLinks( escapeHTML( prp.value ), hi, opts )
 				default:
-					return escapeHTML( pr.value )
+					return escapeHTML( prp.value )
 			}
 		}
 	}
 	function renderChildrenOf( nd, hi, lvl ) {
 		// For each of the children of specified hierarchy node 'nd', 
 		// write a paragraph for the referenced resource:
+		console.debug('renderChildrenOf',nd,hi,lvl);
 		if( !nd.nodes || nd.nodes.length<1 ) return '';
 		let r=null, rC=null,
 			params={
@@ -561,13 +572,6 @@ function toXhtml( data, opts ) {
 	function extOf( str ) {
 		// get the file extension without the '.':
 		return str.substring( str.lastIndexOf('.')+1 )
-	}
-	function dataTypeOf( dTs, sT, pCid ) {
-//		console.debug( dTs, sT, pCid );
-		// given an attributeType ID, return it's dataType:
-		return itemById( dTs, itemById( sT[pClasses], pCid ).dataType )
-		//                    get propertyClass
-		//	   get dataType
 	}
 	// Make a very simple hash code from a string:
 	// http://werxltd.com/wp/2010/05/13/javascript-implementation-of-javas-string-hashcode-method/

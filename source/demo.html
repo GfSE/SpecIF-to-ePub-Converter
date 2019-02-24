@@ -10,7 +10,7 @@
 	<script type="text/javascript" src="./lib/filesaver/src/fileSaver.js"></script>
 	<script type="text/javascript" src="./lib/ajv/ajv-4.11.8.min.js"></script>
 	<script type="text/javascript" src="./lib/jszip/dist/jszip.js"></script>
-	<script type="text/javascript" src="https://specif.de/v0.10.4/check.js"></script>
+	<script type="text/javascript" src="https://specif.de/v0.10.6/check.js"></script>
 	<script type="text/javascript" src="./lib/specif/importSpecif.js"></script>
 	<script type="text/javascript" src="./js/toXhtml.js"></script>
 	<script type="text/javascript" src="./js/toEpub.js"></script>
@@ -99,11 +99,13 @@ var	specif = {
 						case 200:
 							// 1. check data against schema:
 							let rc = checkSchema( JSON.parse( buf2str(xhr.response) ), data );
+							console.debug('schema-check',rc);
 							if( rc.status!=0 ) { cDO.reject( rc ); return };
 
 							// 2. Check further constraints:
 							cDO.notify('Checking constraints',20);
 							rc = checkConstraints( data );
+							console.debug('constraint-check',rc);
 							if( rc.status==0 ) 	cDO.resolve( data, rc )
 							else 				cDO.reject( rc );
 							break
@@ -126,7 +128,6 @@ var	specif = {
 				// https://stackoverflow.com/a/42916772/2214
 				xhr.responseType = rspT;
 				xhr.onreadystatechange = function () {
-			//		console.debug('xhr',this.readyState,this)
 					if (this.readyState<4 ) return;
 					if (this.readyState==4 && this.status==200) {
 						if( typeof successFn=="function" ) successFn(this)

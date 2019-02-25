@@ -8,7 +8,7 @@ function toXhtml( data, opts ) {
 	// - Title links are only correct if they reference objects in the same SpecIF hierarchy (hence, the same xhtml file)
 
 	// Check for missing options:
-	if( !opts ) opts = {};
+	if( typeof(opts)!='object' ) opts = {};
 	if( !opts.headingProperties ) opts.headingProperties = ['SpecIF:Heading','ReqIF.ChapterName','Heading','Überschrift'];
 	if( !opts.titleProperties ) opts.titleProperties = ['dcterms:title','DC.title','ReqIF.Name','Title','Titel'];
 	if( !opts.descriptionProperties ) opts.descriptionProperties = ['dcterms:description','DC.description','SpecIF:Diagram','ReqIF.Text','Description','Beschreibung'];
@@ -23,8 +23,9 @@ function toXhtml( data, opts ) {
 	if( !opts.titleLinkEnd ) opts.titleLinkEnd = '\\]\\]';			// must escape javascript AND RegEx
 	if( typeof opts.titleLinkMinLength!='number' ) opts.titleLinkMinLength = 3;	
 	opts.addTitleLinks = opts.titleLinkBegin && opts.titleLinkEnd && opts.titleLinkMinLength>0;
+	if( typeof(opts.RE)!='object' ) opts.RE = {};
 	if( opts.titleLinkBegin && opts.titleLinkEnd )
-		opts.RETitleLink = new RegExp( opts.titleLinkBegin+'(.+?)'+opts.titleLinkEnd, 'g' );
+		opts.RE.TitleLink = new RegExp( opts.titleLinkBegin+'(.+?)'+opts.titleLinkEnd, 'g' );
 
 	// set certain SpecIF element names according to the SpecIF version:
 	switch( data.specifVersion ) {
@@ -437,10 +438,10 @@ function toXhtml( data, opts ) {
 
 			// in certain situations, remove the dynamic linking pattern from the text:
 			if( !opts.addTitleLinks )
-				return str.replace( opts.RETitleLink, function( $0, $1 ) { return $1 } )
+				return str.replace( opts.RE.TitleLink, function( $0, $1 ) { return $1 } )
 				
 			// else, find all dynamic link patterns in the current property and replace them by a link, if possible:
-			str = str.replace( opts.RETitleLink, 
+			str = str.replace( opts.RE.TitleLink, 
 				function( $0, $1 ) { 
 //					if( $1.length<opts.titleLinkMinLength ) return $1;
 					let m=$1.toLowerCase(), cR, ti;

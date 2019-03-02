@@ -351,10 +351,10 @@ function toXhtml( data, opts ) {
 					};
 					
 					// if the type is svg, png is preferred and available, replace it:
-					let png = itemById( data.files, fileName(u2)+'.png' );
-					if( t2.indexOf('svg')>-1 && opts.preferPng && png ) {
-						u2 = png.id;
-						t2 = png.mimeType
+					let pngF = itemById( data.files, fileName(u2)+'.png' );
+					if( t2.indexOf('svg')>-1 && opts.preferPng && pngF ) {
+						u2 = pngF.id;
+						t2 = pngF.type
 					}; 
 					
 					// ToDo: Check whether the referenced file is available.
@@ -390,24 +390,24 @@ function toXhtml( data, opts ) {
 					e = e.toLowerCase();
 	//				console.debug( $0, $1, 'url: ', u1, 'ext: ', e );
 						
-					let png = itemById( data.files, fileName(u1)+'.png' );
+					let pngF = itemById( data.files, fileName(u1)+'.png' );
 					if( opts.imgExtensions.indexOf( e )>-1 ) {  
 						// it is an image, show it:
 
 						// if the type is svg, png is preferred and available, replace it:
-						if( t1.indexOf('svg')>-1 && opts.preferPng && png ) {
-							u1 = png.id;
-							t1 = png.mimeType
+						if( t1.indexOf('svg')>-1 && opts.preferPng && pngF ) {
+							u1 = pngF.id;
+							t1 = pngF.type
 						};
 						let i1 = hashCode(u1)+'.'+extOf(u1);
 						pushReferencedFile( i1, u1, t1 );
 						d = '<img src="'+addEpubPath(i1)+'" style="max-width:100%" alt="'+d+'" />'
 //						d = '<object data="'+addEpubPath(u1)+'"'+t1+s1+' >'+d+'</object>
 					} else {
-						if( e=='ole' && png ) {  
+						if( e=='ole' && pngF ) {  
 							// It is an ole-file, so add a preview image;
-							u1 = png.id;
-							t1 = png.mimeType;
+							u1 = pngF.id;
+							t1 = pngF.type;
 							let i1 = hashCode(u1)+'.'+extOf(u1);
 							pushReferencedFile( i1, u1, t1 );
 							d = '<img src="'+addEpubPath(i1)+'" style="max-width:100%" alt="'+d+'" />'

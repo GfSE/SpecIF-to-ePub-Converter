@@ -489,7 +489,7 @@ function toXhtml( data, opts ) {
 					};
 					return escapeHTML( ct );
 				case 'xhtml':
-					return titleLinks( fileRef( prp.value, opts ), hi, opts )
+					return titleLinks( fileRef( replaceLt(prp.value), opts ), hi, opts )
 				case 'xs:string':
 					return titleLinks( escapeHTML( prp.value ), hi, opts )
 				default:
@@ -549,6 +549,11 @@ function toXhtml( data, opts ) {
 		for( var i=L.length-1;i>-1;i-- )
 			if (L[i][p] === s) return i;
 		return -1
+	}
+	function replaceLt( txt ) {
+		// remove '<' where it is neither an opening or closing tag.
+		// Beware that the MS-Edge ePub-Reader is not up to the standards !
+		return txt.replace( /<([^a-z//]{1})/g, function($0,$1) {return '&lt;'+$1} )
 	}
 	function escapeHTML( str ) {
 		return str.replace(/["'&<>]/g, function($0) {

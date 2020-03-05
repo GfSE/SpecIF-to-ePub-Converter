@@ -7,6 +7,16 @@ function toXhtml( data, opts ) {
 	// - HTML ids are made from resource ids, so multiple reference of a resource results in mutiple occurrences of the same id.
 	// - Title links are only correct if they reference objects in the same SpecIF hierarchy (hence, the same xhtml file)
 
+	// Reject versions < 0.10.8:
+	let v = data.specifVersion.split('.');
+	if( v.length<2 || (10000*parseInt(v[0],10)+100*parseInt(v[1],10)+parseInt(v[2]||0,10))<1008 ) {
+		if (typeof(opts.fail)=='function' )
+			opts.fail({status:904,statusText:"SpecIF Version < v0.10.8 is not supported."})
+		else
+			console.error("SpecIF Version < v0.10.8 is not supported.");
+		return
+	};
+	
 	// Check for missing options:
 	if( typeof(opts)!='object' || typeof(opts.callback)!='function' ) return null;;
 	if( typeof(opts.classifyProperties)!='function') {
@@ -143,8 +153,8 @@ function toXhtml( data, opts ) {
 		// Create a title page as xhtml-file and add it as first section:
 		xhtml.sections.push(
 				xhtmlOf({ 
-					title: data.title,
-					body: '<div class="title">'+data.title+'</div>'
+					title: escapeXML(data.title),
+					body: '<div class="title">'+escapeXML(data.title)+'</div>'
 				})
 		);
 		
@@ -154,7 +164,7 @@ function toXhtml( data, opts ) {
 			pushHeading( h.title, {nodeId: h.id, level: 1} );
 			xhtml.sections.push(
 				xhtmlOf({ 
-					title: data.title,
+					title: escapeXML(data.title),
 					body: renderHierarchy( h, hi, 1 )
 				})
 			)
@@ -410,7 +420,7 @@ function toXhtml( data, opts ) {
 					if( !e ) return $0
 
 					// If there is no description, use the name of the link target:
-					let d = $4 || u1; // $4 is the description between object tags
+					let d = escapeXML(withoutPath( $4 || u1 )); // $4 is the description between object tags
 
 					return findBestFile( u2, e, d )
 				}
@@ -430,7 +440,7 @@ function toXhtml( data, opts ) {
 					if( !e ) return $0
 
 					// $3 is the description between the tags <object></object>:
-					let d = withoutPath( $3 || u1 );
+					let d = escapeXML(withoutPath( $3 || u1 ));
 					e = e.toLowerCase();
 //					console.debug( 'url:', u1, ', ext:', e, ', alt:', d );
 

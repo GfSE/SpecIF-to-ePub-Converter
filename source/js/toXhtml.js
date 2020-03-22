@@ -10,13 +10,15 @@ function toXhtml( data, opts ) {
 	// - All values must be strings, the language must be selected before calling this function, i.e. languageValues as permitted by the schema are not supported!
 
 	// Reject versions < 0.10.8:
-	let v = data.specifVersion.split('.');
-	if( v.length<2 || (10000*parseInt(v[0],10)+100*parseInt(v[1],10)+parseInt(v[2]||0,10))<1008 ) {
-		if (typeof(opts.fail)=='function' )
-			opts.fail({status:904,statusText:"SpecIF Version < v0.10.8 is not supported."})
-		else
-			console.error("SpecIF Version < v0.10.8 is not supported.");
-		return
+	if( data.specifVersion ) {
+		let v = data.specifVersion.split('.');
+		if( v.length<2 || (10000*parseInt(v[0],10)+100*parseInt(v[1],10)+parseInt(v[2]||0,10))<1008 ) {
+			if (typeof(opts.fail)=='function' )
+				opts.fail({status:904,statusText:"SpecIF Version < v0.10.8 is not supported."})
+			else
+				console.error("SpecIF Version < v0.10.8 is not supported.");
+			return
+		}
 	};
 	
 	// Check for missing options:
@@ -34,9 +36,9 @@ function toXhtml( data, opts ) {
 
 	if( typeof(opts.showEmptyProperties)!='boolean' ) opts.showEmptyProperties = false;
 	if( typeof(opts.hasContent)!='function' ) opts.hasContent = hasContent;
-	if( typeof(opts.translateTitles)!='boolean' ) opts.translateTitles = false;
-	if( !opts.translateTitles || typeof(opts.translate)!='function' )
-		opts.translate = function(str) { return str };
+	if( typeof(opts.lookupTitles)!='boolean' ) opts.lookupTitles = false;
+	if( !opts.lookupTitles || typeof(opts.lookup)!='function' )
+		opts.lookup = function(str) { return str };
 	// If a hidden property is defined with value, it is suppressed only if it has this value;
 	// if the value is undefined, the property is suppressed in all cases.
 	if( !opts.hiddenProperties ) opts.hiddenProperties = [];
@@ -44,8 +46,8 @@ function toXhtml( data, opts ) {
 	if( typeof(opts.preferPng)!='boolean' ) opts.preferPng = true;
 
 	// If no label is provided, the respective properties are skipped:
-	if( opts.propertiesLabel && opts.translateTitles ) opts.propertiesLabel = opts.translate( opts.propertiesLabel );	
-	if( opts.statementsLabel && opts.translateTitles ) opts.statementsLabel = opts.translate( opts.statementsLabel );	
+	if( opts.propertiesLabel && opts.lookupTitles ) opts.propertiesLabel = opts.lookup( opts.propertiesLabel );	
+	if( opts.statementsLabel && opts.lookupTitles ) opts.statementsLabel = opts.lookup( opts.statementsLabel );	
 	if( !opts.titleLinkBegin ) opts.titleLinkBegin = '\\[\\[';		// must escape javascript AND RegEx
 	if( !opts.titleLinkEnd ) opts.titleLinkEnd = '\\]\\]';			// must escape javascript AND RegEx
 	if( typeof opts.titleLinkMinLength!='number' ) opts.titleLinkMinLength = 3;	
@@ -229,7 +231,7 @@ function toXhtml( data, opts ) {
 		ct += '<table class="statementTable"><tbody>';
 		for( cid in sts ) {
 			// we don't have (and don't need) the individual statement, just the class:
-			sTi = opts.translate( itemBy(data.statementClasses,'id',cid).title );
+			sTi = opts.lookup( itemBy(data.statementClasses,'id',cid).title );
 /*			// 5 columns:
 			ct += '<tr><td>';
 			sts[cid].subjects.forEach( function(r2) {
@@ -309,7 +311,7 @@ function toXhtml( data, opts ) {
 		// return the content of all properties, sorted by description and other properties:
 		let c1='', rows='', rt, hPi;
 		r.descriptions.forEach( function(prp) {
-			c1 += valOf( prp, hi )
+			c1 += propertyValueOf( prp, hi )
 		});
 		// Skip the remaining properties, if no label is provided:
 //		console.debug('#1',c1)
@@ -319,8 +321,8 @@ function toXhtml( data, opts ) {
 		r.other.forEach( function(prp) {
 			// the property title or it's class's title:
 			if( opts.hasContent(prp.value) || opts.showEmptyProperties ) {
-				rt = opts.translate( prp.title || propertyClassOf( prp['class'] ).title );
-				rows += '<tr><td class="propertyTitle">'+rt+'</td><td>'+valOf( prp, hi )+'</td></tr>'
+				rt = opts.lookup( prp.title || propertyClassOf( prp['class'] ).title );
+				rows += '<tr><td class="propertyTitle">'+rt+'</td><td>'+propertyValueOf( prp, hi )+'</td></tr>'
 			}
 		});
 		// Add a property 'SpecIF:Type':
@@ -525,10 +527,10 @@ function toXhtml( data, opts ) {
 			);
 			return str
 		}
-		function valOf( prp, hi ) {
+		function propertyValueOf( prp, hi ) {
 			if( !prp.value ) return '';
 			// return the value of a single property:
-//			console.debug('valOf',prp,hi);
+//			console.debug('propertyValueOf',prp,hi);
 			if(prp['class']) {
 				let dT = itemBy( data.dataTypes, 'id', propertyClassOf(prp['class']).dataType );
 				switch( dT.type ) {
@@ -615,6 +617,7 @@ function toXhtml( data, opts ) {
 	}
 	function hasContent( str ) {
 		// check whether str has content or a reference:
+		if( !str ) return false;
 		return str.replace(/<[^>]+>/g, '').trim().length>0	// strip HTML and trim
 			|| /<object[^>]+(\/>|>[\s\S]*?<\/object>)/.test(str)
 			|| /<img[^>]+(\/>|>[\s\S]*?<\/img>)/.test(str)

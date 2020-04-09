@@ -36,9 +36,7 @@ function toXhtml( data, opts ) {
 
 	if( typeof(opts.showEmptyProperties)!='boolean' ) opts.showEmptyProperties = false;
 	if( typeof(opts.hasContent)!='function' ) opts.hasContent = hasContent;
-	if( typeof(opts.lookupTitles)!='boolean' ) opts.lookupTitles = false;
-	if( !opts.lookupTitles || typeof(opts.lookup)!='function' )
-		opts.lookup = function(str) { return str };
+	if( typeof(opts.lookup)!='function' ) opts.lookup = function(str) { return str };
 	// If a hidden property is defined with value, it is suppressed only if it has this value;
 	// if the value is undefined, the property is suppressed in all cases.
 	if( !opts.hiddenProperties ) opts.hiddenProperties = [];
@@ -46,8 +44,8 @@ function toXhtml( data, opts ) {
 	if( typeof(opts.preferPng)!='boolean' ) opts.preferPng = true;
 
 	// If no label is provided, the respective properties are skipped:
-	if( opts.propertiesLabel && opts.lookupTitles ) opts.propertiesLabel = opts.lookup( opts.propertiesLabel );	
-	if( opts.statementsLabel && opts.lookupTitles ) opts.statementsLabel = opts.lookup( opts.statementsLabel );	
+	if( opts.propertiesLabel ) opts.propertiesLabel = opts.lookup( opts.propertiesLabel );	
+	if( opts.statementsLabel ) opts.statementsLabel = opts.lookup( opts.statementsLabel );	
 	if( !opts.titleLinkBegin ) opts.titleLinkBegin = '\\[\\[';		// must escape javascript AND RegEx
 	if( !opts.titleLinkEnd ) opts.titleLinkEnd = '\\]\\]';			// must escape javascript AND RegEx
 	if( typeof opts.titleLinkMinLength!='number' ) opts.titleLinkMinLength = 3;	
@@ -57,6 +55,8 @@ function toXhtml( data, opts ) {
 	if( !opts.RE.XMLEntity ) opts.RE.XMLEntity = new RegExp( '&(amp|gt|lt|apos|quot|#x[0-9a-fA-F]{1,4}|#[0-9]{1,5});/', '');
 	if( opts.titleLinkBegin && opts.titleLinkEnd )
 		opts.RE.TitleLink = new RegExp( opts.titleLinkBegin+'(.+?)'+opts.titleLinkEnd, 'g' );
+
+	const nbsp = '&#160;'; // non-breakable space
 
 	// Create a local list of images, which can be used in XHTML or ePub:
 	// - Take any raster image right away,
@@ -141,11 +141,11 @@ function toXhtml( data, opts ) {
 		// A single comprehensive <object .../> or tag pair <object ...>..</object>.
 		// Limitation: the innerHTML may not have any tags.
 		// The [^<] assures that just the single object is matched. With [\\s\\S] also nested objects match for some reason.
-		let reSO = '<object([^>]+)(/>|>([^<]*?)</object>)',
+		const reSO = '<object([^>]+)(/>|>([^<]*?)</object>)',
 			reSingleObject = new RegExp( reSO, 'g' );
 		// Two nested objects, where the inner is a comprehensive <object .../> or a tag pair <object ...>..</object>:
 		// .. but nothing useful can be done in a WORD file with the outer object ( for details see below in splitRuns() ).
-		let reNO = '<object([^>]+)>[\\s]*'+reSO+'([\\s\\S]*)</object>',
+		const reNO = '<object([^>]+)>[\\s]*'+reSO+'([\\s\\S]*)</object>',
 			reNestedObjects = new RegExp( reNO, 'g' );
 
 		var xhtml = {
@@ -196,10 +196,11 @@ function toXhtml( data, opts ) {
 		let ti = escapeXML( r.title ),
 			ic = rC.icon;
 		if( typeof(ic)!='string' ) ic = '';
-		if( ic ) ic += '&#160;'; // non-breakable space
+		if( ic ) ic += nbsp; // non-breakable space
 		if( !pars || pars.level<1 ) return (ti?ic+ti:'');
 		if( rC.isHeading ) pushHeading( ti, pars );
 		let l = pars.level==1? 1:rC.isHeading? 2:3;
+		if( !ti ) return '';
 		return '<h'+l+' id="'+pars.nodeId+'">'+(ti?ic+ti:'')+'</h'+l+'>'
 	}
 	function statementsOf( r, hi, opts ) { // resource, options
@@ -311,7 +312,7 @@ function toXhtml( data, opts ) {
 		// return the content of all properties, sorted by description and other properties:
 		let c1='', rows='', rt, hPi;
 		r.descriptions.forEach( function(prp) {
-			c1 += propertyValueOf( prp, hi )
+			c1 += '<p>'+propertyValueOf( prp, hi )+'</p>'
 		});
 		// Skip the remaining properties, if no label is provided:
 //		console.debug('#1',c1)
@@ -540,11 +541,11 @@ function toXhtml( data, opts ) {
 							st = opts.stereotypeProperties.indexOf(prp.title)>-1,
 							vL = prp.value.split(',');  // in case of ENUMERATION, content carries comma-separated value-IDs
 						for( var v=0,V=vL.length;v<V;v++ ) {
-							eV = itemBy(dT.values,'id',vL[v].trim());
+							eV = itemBy(dT.values,'id',vL[v]);
 							// If 'eV' is an id, replace it by title, otherwise don't change:
 							// Add 'double-angle quotation' in case of SubClass values.
-							if( eV ) ct += (v==0?'':', ')+(st?('&#x00ab;'+eV.value+'&#x00bb;'):eV.value)
-							else ct += (v==0?'':', ')+vL[v]
+							if( eV ) ct += (v==0?'':', ')+(st?('&#x00ab;'+opts.lookup(eV.value)+'&#x00bb;'):opts.lookup(eV.value))
+							else ct += (v==0?'':', ')+vL[v] // ToDo: Check whether this case can occur
 						};
 						return escapeXML( ct );
 					case opts.dataTypeXhtml:
@@ -631,6 +632,7 @@ function toXhtml( data, opts ) {
 		return txt.replace( /<([^a-z//]{1})/g, function($0,$1) {return '&lt;'+$1} )
 	}
 	function escapeXML( s ) {
+		if( !s ) return '';
 		return s.replace( opts.RE.AmpersandPlus, function($0,$1) {
 				// 1. Replace &, unless it belongs to an XML entity:
 				if( opts.RE.XMLEntity.test($0) ) {

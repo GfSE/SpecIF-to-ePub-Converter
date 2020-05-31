@@ -316,7 +316,7 @@ function toXhtml( data, opts ) {
 		});
 		// Skip the remaining properties, if no label is provided:
 //		console.debug('#1',c1)
-		if( !opts.propertiesLabel ) return c1;
+		if( !opts.propertiesLabel || r.isHeading ) return c1;
 		
 		// Finally, list the remaining properties with property title (name) and value:
 		r.other.forEach( function(prp) {

@@ -37,7 +37,9 @@ function toXhtml( data, opts ) {
 	// If a hidden property is defined with value, it is suppressed only if it has this value;
 	// if the value is undefined, the property is suppressed in all cases.
 	if( !opts.hiddenProperties ) opts.hiddenProperties = [];
-	if( !opts.stereotypeProperties ) opts.stereotypeProperties = ['UML:Stereotype'];	
+	if( !opts.titleProperties ) opts.titleProperties = ['dcterms:title'];
+	if( !opts.descriptionProperties ) opts.descriptionProperties = ['dcterms:description','SpecIF:Diagram'];
+	if( !opts.stereotypeProperties ) opts.stereotypeProperties = ['UML:Stereotype'];
 
 	// If no label is provided, the respective properties are skipped:
 	if( opts.propertiesLabel ) opts.propertiesLabel = opts.lookup( opts.propertiesLabel );	
@@ -314,20 +316,22 @@ function toXhtml( data, opts ) {
 					return '../'+opts.epubImgPath+'F-'+u.simpleHash()
 				}
 				function pushReferencedFile( f ) {
-					// avoid duplicate entries:
-					if( indexBy( xhtml.images, 'title', f.title )<0 ) {
-						if( f.blob ) {
+					if( f && f.blob ) {
+						// avoid duplicate entries:
+						if( indexBy( xhtml.images, 'title', f.title )<0 ) {
 							xhtml.images.push({
 								id: 'F-'+f.title.simpleHash(),
-						//		id: f.id,
-						//		title: f.title,  // is the distinguishing/relative part of the URL
+							//	id: f.id,
+							//	title: f.title,  // is the distinguishing/relative part of the URL
 								blob: f.blob,
 								type: f.type
 							})
-						} else {
-							console.warn('No image file found for ',f.title)
-						}
-					}
+						};
+						// file is present in xhtml.images:
+						return true;
+					};
+					// else:
+					return false;
 				}
 
 			// Prepare a file reference for viewing and editing:
@@ -423,9 +427,11 @@ function toXhtml( data, opts ) {
 						if( ( ti.indexOf('svg')>-1 ) && opts.preferPng )
 							ti = fileName(ti)+'.png';
 						
-						pushReferencedFile( itemBy( data.files, 'title', ti ) );
-						return '<img src="'+fileNameWithPath(ti)+'" style="max-width:100%" alt="'+alt+'" />'
+						if( pushReferencedFile( itemBy( data.files, 'title', ti )) )
+							return '<img src="'+fileNameWithPath(ti)+'" style="max-width:100%" alt="'+alt+'" />';
 					};
+					// else:
+					console.warn('No image file found for ',ti);
 					// as a last resort, just show the description:
 					return '<span>'+alt+'</span>'  
 				}
@@ -595,11 +601,11 @@ function toXhtml( data, opts ) {
 			// $2: start of opening tag '<' or closing tag '</'
 			// $3: rest of the tag
 			// escape the inner text and keep the tag:
-			out += $1.escapeXML() + $2 + $3;
+			out += escapeXML($1) + $2 + $3;
 			return '';
 		});
 		// process the remainder (the text after the last tag or the whole text if there was no tag:
-		out += str.escapeXML();
+		out += escapeXML(str);
 		return out;
 	} 
 	/**
